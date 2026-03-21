@@ -6,6 +6,7 @@ import os
 import sqlite3
 
 from pdf_processor import process_pdf_to_file
+from pdf_processor2 import process_pdf_to_vectordb
 
 app = FastAPI()
 # 프론트엔드에서 오는 요청을 허용해주는 CORS 설정 추가
@@ -45,7 +46,7 @@ init_db()
 def process_in_background(task_id: int, file_path: str):
     try:
         # 무거운 전처리 작업 실행!
-        result_path = process_pdf_to_file(file_path)
+        result_path = process_pdf_to_vectordb(file_path)
 
         # 작업이 끝나면 DB 상태를 'completed'로 바꾸고 결과 주소를 저장
         conn = sqlite3.connect("app.db")
@@ -71,6 +72,8 @@ async def upload_pdf(file: UploadFile = File(...), background_tasks: BackgroundT
     file_path = f"uploads/{file.filename}"
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+
+    print('flag1')
 
     # 일단 DB에 'processing(처리 중)' 상태로 기록하고 번호표(task_id) 발급
     conn = sqlite3.connect("app.db")
