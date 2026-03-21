@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF 전처리 서비스</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 50px; text-align: center; }
+        .container { max-width: 500px; margin: 0 auto; padding: 30px; border: 1px solid #ddd; border-radius: 50px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        input[type="file"] { margin-bottom: 20px; }
+        button { padding: 10px 20px; background-color: #007BFF; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        #status-message { margin-top: 20px; font-weight: bold; color: #333; }
+        #result-link { margin-top: 15px; display: none; color: green; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>PDF 전처리 업로드</h2>
+
+    <input type="file" id="pdf-file" accept=".pdf">
+    <br>
+    <button id="upload-btn" onclick="uploadFile()">업로드 및 전처리 시작</button>
+
+    <div id="status-message"></div>
+    <div id="result-link"></div>
+</div>
+
+<script>
+    // HTML 요소들을 자바스크립트로 가져오기
+    const fileInput = document.getElementById('pdf-file');
+    const uploadBtn = document.getElementById('upload-btn');
+    const statusMessage = document.getElementById('status-message');
+    const resultLink = document.getElementById('result-link');
+
+    // 🌟 1. 파일 업로드 함수 (5단계)
+    async function uploadFile() {
+        const file = fileInput.files[0];
+        if (!file) {
+            alert("PDF 파일을 먼저 선택해주세요!");
+            return;
+        }
+
+        // 화면 상태 변경 (로딩 중)
+        uploadBtn.disabled = true;
+        statusMessage.innerText = "파일 업로드 중...";
+        statusMessage.style.color = "blue";
+        resultLink.style.display = "none";
+
+        // 파일을 서버로 보낼 준비 (FormData 객체 사용)
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            // 백엔드의 /upload/ API로 파일 전송
+            const response = await fetch("http://127.0.0.1:8000/upload/", {
+                method: "POST",
+                body: formData
+            });
+            const data = await response.json();
+
+            // 백엔드에서 번호표(task_id)를 받으면 상태 확인 시작
+            if (data.task_id) {
+                statusMessage.innerText = "업로드 완료! 서버에서 전처리 진행 중입니다... ⏳";
+                checkStatus(data.task_id); // 🌟 Polling 시작!
+            } else {
+                throw new Error(data.error || "업로드 실패");
+            }
+        } catch (error) {
+            statusMessage.innerText = "오류 발생: " + error.message;
+            statusMessage.style.color = "red";
+            uploadBtn.disabled = false;
+        }
+    }
+
+    // 🌟 2. 상태 확인 함수 (Polling - 6단계)
+    function checkStatus(taskId) {
+        // setInterval을 사용해 2초(2000ms)마다 백엔드에 "다 됐어?"라고 물어봅니다.
+        const pollInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`http://127.0.0.1:8000/status/${taskId}`);
+                const data = await response.json();
+
+                if (data.status === 'completed') {
+                    // 전처리 완료!
+                    clearInterval(pollInterval); // 물어보기 중단
+
+                    statusMessage.innerText = "🎉 전처리가 완료되었습니다!";
+                    statusMessage.style.color = "green";
+
+                    // 완료 알림창 띄우기 (요청하신 기능!)
+                    alert("전처리가 완료되었습니다!");
+
+                    // 결과 파일 경로 화면에 표시
+                    resultLink.innerHTML = `결과물 경로 (DB에 저장됨): <br> <b>${data.result_url}</b>`;
+                    resultLink.style.display = "block";
+
+                    uploadBtn.disabled = false; // 버튼 다시 활성화
+
+                } else if (data.status === 'failed') {
+                    // 전처리 실패
+                    clearInterval(pollInterval);
+                    statusMessage.innerText = "❌ 전처리 중 오류가 발생했습니다.";
+                    statusMessage.style.color = "red";
+                    uploadBtn.disabled = false;
+                }
+                // 'processing' 상태라면 아무것도 하지 않고 2초 뒤에 다시 물어봅니다.
+
+            } catch (error) {
+                clearInterval(pollInterval);
+                statusMessage.innerText = "상태 확인 중 통신 오류 발생";
+                statusMessage.style.color = "red";
+                uploadBtn.disabled = false;
+            }
+        }, 2000); // 2000밀리초 = 2초
+    }
+</script>
+
+</body>
+</html>

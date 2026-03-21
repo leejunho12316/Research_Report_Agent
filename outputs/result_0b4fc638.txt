@@ -1,0 +1,51 @@
+KT AIVLE School
+Make it possible
+(선택) 사전학습자료 리스트
+1. 온라인 자가학습(Python)
+Python 입문 및 교재
+ㅇ Python 기초
+- 생활코딩 Python 입문 수업(https://opentutorials.org/course/4769)
+- 파이썬 제어문(https://opentutorials.org/course/4779)
+- 혼자 공부하는 파이썬 (https://www.youtube.com/watch?v=IUXMgyiFBIU&list=PLBXuLgInP-5kr0PclHz1ubNZgESmliuB7)
+ㅇ 온라인 파이썬 교재
+A Byte of Python 한국어판
+점프 투 파이썬 (wikiDocs)
+데이터 사이언스 스쿨
+파이썬으로 배우는 알고리즘 트레이딩
+2. 온라인 자가학습(Java)
+Java 입문, 자바 프레임워크 및 교재
+ㅇ Java, 자바 프레임워크 기초
+- 김영한의 자바 입문(인프런) ([지금 무료]김영한의 자바 입문 - 코드로 시작하는 자바 첫걸음 강의 | 김영한 - 인프런 (inflearn.com)
+- 나도 코딩의 자바 무료 강의(나도코딩 블로그) (자바 무료 강의 2시간 완성 (1분 자바) 강의 자료 PDF (tistory.com))
+- 생활 코딩의 자바 수업 (Java - 생활코딩 (opentutorials.org)) 
+- 스프링 프레임워크 입문(백기선-인프런) ([지금 무료]스프링 프레임워크 입문 강의 | 백기선 - 인프런 (inflearn.com))
+- 예제로 배우는 스프링 입문(개정판)(백기선-인프런)
+[지금 무료]예제로 배우는 스프링 입문 (개정판) 강의 | 백기선 - 인프런 (inflearn.com)
+ㅇ 온라인 자바 /자바 프레임워크 교재
+점프 투 자바 – WikiDocs
+Spring | Guides (번역 필요)
+3. 온라인 자가학습(Cloud)
+Cloud 입문(Aws,azure)
+ㅇ Cloud 기초 관련
+- MS의 AZURE 학습 : Azure 학습 | Microsoft Learn
+- MS의 Azure  기본사항(클라우드 개념 설명) 
+Microsoft Azure 기본 사항: 클라우드 개념 설명 - Training | Microsoft Learn
+- 초보자를 위한 AWS 클라우드 시작하기(인프런) 
+[지금 무료]초보자를 위한 AWS 클라우드 시작하기 강의 | 유용한IT학습 - 인프런 (inflearn.com)
+4. 추천도서
+Python
+- Do it! 점프 투 파이썬(박응용 저, 2016) 
+- 혼자 공부하는 머신러닝+딥러닝(박해선 저)  
+(https://www.youtube.com/watch?v=J6wehCO_c58&list=PLJN246lAkhQjoU0C4v8FgtbjOIXxSs_4Q)
+- 핸즈온 머신러닝(오렐리앙 게론 저, 2017) : 참고(https://tensorflow.blog/handson-ml2/)
+Java
+- Do it ! 점프 투 자바(박응용 저)
+- 자바 ORM 표준 JPA 프로그래밍(김영한 저) 
+인프라, 클라우드, 제안전략
+- 그림으로 공부하는 IT인프라 구조(야마자키 야스시 저)
+- 개발자도 궁금한 IT인프라(정송호, 김영선, 전성민 저) 
+- 인프라엔지니어의 교과서 : 요구사항 분석과 설계(JIEC 기반엔지니어링사업부 인프라설계연구팀)
+- 그림으로 배우는 클라우드(하야시 미사유키 저)
+- 고객의 마음을 움직이는 제안전략(현영근, 이주연 저)
+Make it possible
+
