@@ -5,8 +5,7 @@ import shutil
 import os
 import sqlite3
 
-from pdf_processor import process_pdf_to_file
-from pdf_processor2 import process_pdf_to_vectordb
+from pdf_processor import process_pdf_to_vectordb
 
 app = FastAPI()
 # 프론트엔드에서 오는 요청을 허용해주는 CORS 설정 추가
