@@ -4,116 +4,379 @@
     <meta charset="UTF-8">
     <title>PDF 전처리 서비스</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 50px; text-align: center; }
-        .container { max-width: 500px; margin: 0 auto; padding: 30px; border: 1px solid #ddd; border-radius: 50px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        input[type="file"] { margin-bottom: 20px; }
-        button { padding: 10px 20px; background-color: #007BFF; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #0056b3; }
-        button:disabled { background-color: #cccccc; cursor: not-allowed; }
-        #status-message { margin-top: 20px; font-weight: bold; color: #333; }
-        #result-link { margin-top: 15px; display: none; color: green; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 왼쪽 사이드바 */
+        .sidebar {
+            width: 120px;
+            background: #ffffff;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 24px;
+            flex-shrink: 0;
+        }
+
+        .upload-btn {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 1.5px solid #d0d0d0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, box-shadow 0.15s;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+
+        .upload-btn:hover {
+            background: #f0f0f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.13);
+        }
+
+        .upload-btn svg {
+            width: 22px;
+            height: 22px;
+            color: #555;
+        }
+
+        /* 숨겨진 파일 입력 */
+        #file-input {
+            display: none;
+        }
+
+        /* 오른쪽 메인 영역 */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #ffffff;
+        }
+
+        .main-header {
+            padding: 20px 32px 12px 32px;
+            border-bottom: 1px solid #eeeeee;
+        }
+
+        .main-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #222;
+        }
+
+        /* 목록 */
+        .file-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 18px 32px;
+            border-bottom: 1px solid #f0f0f0;
+            gap: 16px;
+            transition: background 0.1s;
+        }
+
+        .file-item.clickable {
+            cursor: pointer;
+        }
+
+        .file-item.clickable:hover {
+            background: #fafafa;
+        }
+
+        .file-item.disabled {
+            opacity: 0.45;
+            filter: grayscale(60%);
+            cursor: default;
+            pointer-events: none;
+        }
+
+        /* PDF 아이콘 원 */
+        .pdf-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #22c55e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .pdf-icon svg {
+            width: 22px;
+            height: 22px;
+            color: #ffffff;
+        }
+
+        /* 파일 정보 */
+        .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #222;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-status {
+            font-size: 13px;
+            color: #888;
+            margin-top: 3px;
+        }
+
+        .file-status.processing {
+            color: #f59e0b;
+        }
+
+        .file-status.completed {
+            color: #22c55e;
+        }
+
+        .file-status.failed {
+            color: #ef4444;
+        }
+
+        /* 업로드 시각 */
+        .file-time {
+            font-size: 13px;
+            color: #aaa;
+            flex-shrink: 0;
+            text-align: right;
+            min-width: 80px;
+        }
+
+        /* 빈 상태 */
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #bbb;
+            gap: 12px;
+            padding: 60px;
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            color: #ddd;
+        }
+
+        .empty-state p {
+            font-size: 15px;
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>PDF 전처리 업로드</h2>
+<div class="sidebar">
+    <button class="upload-btn" title="PDF 첨부" onclick="document.getElementById('file-input').click()">
+        <!-- 클립 아이콘 -->
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+        </svg>
+    </button>
+    <input type="file" id="file-input" accept=".pdf" multiple onchange="handleFiles(this.files)">
+</div>
 
-    <input type="file" id="pdf-file" accept=".pdf">
-    <br>
-    <button id="upload-btn" onclick="uploadFile()">업로드 및 전처리 시작</button>
+<div class="main">
+    <div class="main-header">
+        <h1>PDF 전처리</h1>
+    </div>
 
-    <div id="status-message"></div>
-    <div id="result-link"></div>
+    <div class="file-list" id="file-list">
+        <div class="empty-state" id="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            </svg>
+            <p>왼쪽 버튼을 눌러 PDF를 첨부하세요.</p>
+        </div>
+    </div>
 </div>
 
 <script>
-    // HTML 요소들을 자바스크립트로 가져오기
-    const fileInput = document.getElementById('pdf-file');
-    const uploadBtn = document.getElementById('upload-btn');
-    const statusMessage = document.getElementById('status-message');
-    const resultLink = document.getElementById('result-link');
+    const fileList = document.getElementById('file-list');
+    const emptyState = document.getElementById('empty-state');
 
-    // 🌟 1. 파일 업로드 함수 (5단계)
-    async function uploadFile() {
-        const file = fileInput.files[0];
-        if (!file) {
-            alert("PDF 파일을 먼저 선택해주세요!");
-            return;
+    function formatTime(date) {
+        const h = date.getHours();
+        const m = String(date.getMinutes()).padStart(2, '0');
+        const ampm = h < 12 ? '오전' : '오후';
+        const hh = h % 12 || 12;
+        return `${ampm} ${hh}:${m}`;
+    }
+
+    function openChat(fileName) {
+        window.location.href = `chat.html?file=${encodeURIComponent(fileName)}`;
+    }
+
+    // 페이지 로드 시 기존 처리 완료 폴더 불러오기
+    async function loadExistingFiles() {
+        try {
+            const res = await fetch('http://127.0.0.1:8000/files/');
+            const data = await res.json();
+            if (!data.files || data.files.length === 0) return;
+
+            if (emptyState.parentNode) emptyState.remove();
+
+            data.files.forEach(f => {
+                const item = document.createElement('div');
+                const isCompleted = f.status === 'completed';
+                item.className = 'file-item' + (isCompleted ? ' clickable' : '');
+                if (isCompleted) {
+                    item.onclick = () => openChat(f.name);
+                }
+                const statusCls = isCompleted ? 'completed' : 'processing';
+                const statusText = isCompleted ? '처리 완료!' : '진행중...';
+                item.innerHTML = `
+                    <div class="pdf-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                    </div>
+                    <div class="file-info">
+                        <div class="file-name">${escapeHtml(f.name)}</div>
+                        <div class="file-status ${statusCls}">${statusText}</div>
+                    </div>
+                    <div class="file-time"></div>
+                `;
+                fileList.appendChild(item);
+            });
+        } catch (e) {
+            // 서버 미실행 등의 경우 조용히 무시
+        }
+    }
+
+    loadExistingFiles();
+
+    function handleFiles(files) {
+        if (!files || files.length === 0) return;
+
+        // 빈 상태 제거
+        if (emptyState.parentNode) {
+            emptyState.remove();
         }
 
-        // 화면 상태 변경 (로딩 중)
-        uploadBtn.disabled = true;
-        statusMessage.innerText = "파일 업로드 중...";
-        statusMessage.style.color = "blue";
-        resultLink.style.display = "none";
+        Array.from(files).forEach(file => uploadFile(file));
 
-        // 파일을 서버로 보낼 준비 (FormData 객체 사용)
+        // input 초기화 (같은 파일 재선택 허용)
+        document.getElementById('file-input').value = '';
+    }
+
+    async function uploadFile(file) {
+        const itemId = 'item-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+        const now = new Date();
+
+        // 목록 항목 생성
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.id = itemId;
+        item.dataset.fileName = file.name.replace(/\.pdf$/i, '');
+        item.innerHTML = `
+            <div class="pdf-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+            </div>
+            <div class="file-info">
+                <div class="file-name">${escapeHtml(file.name)}</div>
+                <div class="file-status processing" id="${itemId}-status">진행중...</div>
+            </div>
+            <div class="file-time">${formatTime(now)}</div>
+        `;
+        fileList.insertBefore(item, fileList.firstChild);
+
+        // 업로드
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append('file', file);
 
         try {
-            // 백엔드의 /upload/ API로 파일 전송
-            const response = await fetch("http://127.0.0.1:8000/upload/", {
-                method: "POST",
+            const response = await fetch('http://127.0.0.1:8000/upload/', {
+                method: 'POST',
                 body: formData
             });
             const data = await response.json();
 
-            // 백엔드에서 번호표(task_id)를 받으면 상태 확인 시작
             if (data.task_id) {
-                statusMessage.innerText = "업로드 완료! 서버에서 전처리 진행 중입니다... ⏳";
-                checkStatus(data.task_id); // 🌟 Polling 시작!
+                pollStatus(data.task_id, itemId);
             } else {
-                throw new Error(data.error || "업로드 실패");
+                setStatus(itemId, 'failed', '업로드 실패');
             }
-        } catch (error) {
-            statusMessage.innerText = "오류 발생: " + error.message;
-            statusMessage.style.color = "red";
-            uploadBtn.disabled = false;
+        } catch (e) {
+            setStatus(itemId, 'failed', '서버 연결 오류');
         }
     }
 
-    // 🌟 2. 상태 확인 함수 (Polling - 6단계)
-    function checkStatus(taskId) {
-        // setInterval을 사용해 2초(2000ms)마다 백엔드에 "다 됐어?"라고 물어봅니다.
-        const pollInterval = setInterval(async () => {
+    function pollStatus(taskId, itemId) {
+        const interval = setInterval(async () => {
             try {
-                const response = await fetch(`http://127.0.0.1:8000/status/${taskId}`);
-                const data = await response.json();
+                const res = await fetch(`http://127.0.0.1:8000/status/${taskId}`);
+                const data = await res.json();
 
                 if (data.status === 'completed') {
-                    // 전처리 완료!
-                    clearInterval(pollInterval); // 물어보기 중단
-
-                    statusMessage.innerText = "🎉 전처리가 완료되었습니다!";
-                    statusMessage.style.color = "green";
-
-                    // 완료 알림창 띄우기 (요청하신 기능!)
-                    alert("전처리가 완료되었습니다!");
-
-                    // 결과 파일 경로 화면에 표시
-                    resultLink.innerHTML = `결과물 경로 (DB에 저장됨): <br> <b>${data.result_url}</b>`;
-                    resultLink.style.display = "block";
-
-                    uploadBtn.disabled = false; // 버튼 다시 활성화
-
+                    clearInterval(interval);
+                    setStatus(itemId, 'completed', '처리 완료!');
                 } else if (data.status === 'failed') {
-                    // 전처리 실패
-                    clearInterval(pollInterval);
-                    statusMessage.innerText = "❌ 전처리 중 오류가 발생했습니다.";
-                    statusMessage.style.color = "red";
-                    uploadBtn.disabled = false;
+                    clearInterval(interval);
+                    setStatus(itemId, 'failed', '처리 실패');
+                } else if (data.progress) {
+                    setStatus(itemId, 'processing', data.progress);
                 }
-                // 'processing' 상태라면 아무것도 하지 않고 2초 뒤에 다시 물어봅니다.
-
-            } catch (error) {
-                clearInterval(pollInterval);
-                statusMessage.innerText = "상태 확인 중 통신 오류 발생";
-                statusMessage.style.color = "red";
-                uploadBtn.disabled = false;
+            } catch (e) {
+                clearInterval(interval);
+                setStatus(itemId, 'failed', '상태 확인 오류');
             }
-        }, 2000); // 2000밀리초 = 2초
+        }, 2000);
+    }
+
+    function setStatus(itemId, cls, text) {
+        const el = document.getElementById(itemId + '-status');
+        if (!el) return;
+        el.className = 'file-status ' + cls;
+        el.textContent = text;
+
+        if (cls === 'completed') {
+            const item = document.getElementById(itemId);
+            if (item) {
+                item.classList.add('clickable');
+                item.onclick = () => openChat(item.dataset.fileName);
+            }
+        }
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 </script>
 

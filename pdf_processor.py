@@ -397,7 +397,18 @@ def _describe_figures_with_llm(client: openai.OpenAI, fig_dir: str, page_image_d
 # 공개 인터페이스
 # ---------------------------------------------------------------------------
 
-def process_pdf_to_vectordb(file_path: str) -> str:
+def _update_progress(task_id, msg: str):
+    """task_id가 주어졌을 때 DB의 progress 컬럼을 업데이트한다."""
+    if task_id is None:
+        return
+    import sqlite3
+    conn = sqlite3.connect("app.db")
+    conn.execute("UPDATE files SET progress = ? WHERE id = ?", (msg, task_id))
+    conn.commit()
+    conn.close()
+
+
+def process_pdf_to_vectordb(file_path: str, task_id=None) -> str:
     """
     PDF 파일 경로를 받아 멀티모달 RAG 파이프라인을 실행합니다.
 
@@ -429,10 +440,12 @@ def process_pdf_to_vectordb(file_path: str) -> str:
 
     # Step 1 ─ Unstructured
     print('[Step 1] Unstructured 추출 중...')
+    _update_progress(task_id, '[Step 1] Unstructured 추출 중...')
     _extract_with_unstructured(file_path, fig_dir)
 
     # Step 2 ─ PyMuPDF
     print('[Step 2] 페이지 이미지/텍스트 추출 중...')
+    _update_progress(task_id, '[Step 2] 페이지 이미지/텍스트 추출 중...')
     _pdf_to_page_images(file_path, page_image_dir)
     _pdf_to_page_texts(file_path, page_text_dir)
 
@@ -441,10 +454,12 @@ def process_pdf_to_vectordb(file_path: str) -> str:
 
     # Step 3 ─ LLM 페이지 정제
     print('[Step 3] LLM 페이지 정제 중...')
+    _update_progress(task_id, '[Step 3] LLM 페이지 정제 중...')
     refined_pages = _refine_pages_with_llm(client, pairs)
 
     # Step 4 ─ QA 합성 데이터 생성
     print('[Step 4] QA 합성 데이터 생성 중...')
+    _update_progress(task_id, '[Step 4] QA 합성 데이터 생성 중...')
     qa_result = _generate_qa(client, refined_pages, pairs, qa_jsonl_path)
     with open(qa_json_path, 'w', encoding='utf-8') as f:
         json.dump(qa_result, f, ensure_ascii=False)
@@ -452,6 +467,7 @@ def process_pdf_to_vectordb(file_path: str) -> str:
 
     # Step 5 ─ 이미지 설명 생성
     print('[Step 5] 이미지 설명 생성 중...')
+    _update_progress(task_id, '[Step 5] 이미지 설명 생성 중...')
     image_result = _describe_figures_with_llm(client, fig_dir, page_image_dir)
     with open(image_json_path, 'w', encoding='utf-8') as f:
         json.dump(image_result, f, ensure_ascii=False)
@@ -467,6 +483,7 @@ def process_pdf_to_vectordb(file_path: str) -> str:
 
     # Step 6 ─ VectorDB 저장
     print('[Step 6] Chroma VectorDB 저장 중...')
+    _update_progress(task_id, '[Step 6] Chroma VectorDB 저장 중...')
     total_docs = qa_result + image_result
     langchain_docs = [Document(page_content=doc) for doc in total_docs]
 
@@ -482,7 +499,3 @@ def process_pdf_to_vectordb(file_path: str) -> str:
     print(f'  총 저장 문서 수: {count}')
 
     return vectordb_dir
-
-
-process_pdf_to_vectordb(r"C:\Users\goon\PycharmProjects\Research_Report_Agent\uploads\20260320_OCI홀딩스 (010060_매수).pdf")
-
