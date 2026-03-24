@@ -444,6 +444,7 @@ def process_pdf_to_vectordb(file_path: str, task_id=None) -> str:
     fig_dir        = os.path.join(data_dir, 'fig')
     page_image_dir = os.path.join(data_dir, 'pdf_to_image')
     page_text_dir  = os.path.join(data_dir, 'pdf_to_text')
+    refined_pages_path = os.path.join(data_dir, 'refined_pages.json')
     qa_jsonl_path  = os.path.join(data_dir, 'QA_result.jsonl')
     qa_json_path   = os.path.join(data_dir, 'QA_result.json')
     image_json_path= os.path.join(data_dir, 'IMAGE_result.json')
@@ -470,6 +471,8 @@ def process_pdf_to_vectordb(file_path: str, task_id=None) -> str:
     print('[Step 3] LLM 페이지 정제 중...')
     _update_progress(task_id, '[Step 3] LLM 페이지 정제 중...')
     refined_pages = _refine_pages_with_llm(client, pairs)
+    with open(refined_pages_path, 'w', encoding='utf-8') as f:
+        json.dump(refined_pages, f, ensure_ascii=False)
 
     # Step 4 ─ QA 합성 데이터 생성
     print('[Step 4] QA 합성 데이터 생성 중...')
