@@ -22,16 +22,61 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #b2c7d9;
+            background: #ffffff;
             display: flex;
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
         }
 
+        /* 좌우 분할 래퍼 */
+        .content-wrapper {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* 왼쪽 PDF 패널 */
+        .pdf-panel {
+            width: 50%;
+            background: #525659;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            min-width: 200px;
+        }
+
+        .pdf-panel iframe {
+            flex: 1;
+            width: 100%;
+            border: none;
+        }
+
+        /* 드래그 리사이저 */
+        .resizer {
+            width: 5px;
+            background: #94adc3;
+            cursor: col-resize;
+            flex-shrink: 0;
+            transition: background 0.15s;
+        }
+
+        .resizer:hover, .resizer.dragging {
+            background: #4a90d9;
+        }
+
+        /* 오른쪽 채팅 패널 */
+        .chat-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 200px;
+        }
+
         /* 상단 헤더 */
         .chat-header {
-            background: #a8bdd1;
+            background: #ffffff;
             padding: 12px 16px;
             display: flex;
             align-items: center;
@@ -98,7 +143,7 @@
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            background: #4a90d9;
+            background: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -109,7 +154,7 @@
         .agent-avatar svg {
             width: 20px;
             height: 20px;
-            color: #fff;
+            color: #000;
         }
 
         /* Agent 이름 + 말풍선 묶음 */
@@ -222,7 +267,7 @@
 
         /* 하단 입력 영역 */
         .chat-footer {
-            background: #a8bdd1;
+            background: #ffffff;
             padding: 10px 12px;
             display: flex;
             align-items: center;
@@ -249,7 +294,7 @@
             width: 42px;
             height: 42px;
             border-radius: 50%;
-            background: #fee500;
+            background: #ffffff;
             border: none;
             cursor: pointer;
             display: flex;
@@ -260,7 +305,7 @@
         }
 
         .send-btn:hover {
-            background: #fdd800;
+            background: #555555;
         }
 
         .send-btn:disabled {
@@ -287,17 +332,32 @@
     <div class="chat-header-title" id="header-title">챗봇</div>
 </div>
 
-<!-- 메시지 영역 -->
-<div class="chat-body" id="chat-body"></div>
+<div class="content-wrapper">
 
-<!-- 하단 입력 -->
-<div class="chat-footer">
-    <textarea class="chat-input" id="chat-input" placeholder="메시지를 입력하세요" rows="1"></textarea>
-    <button class="send-btn" id="send-btn" onclick="sendMessage()">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.269 20.876L5.999 12zm0 0h7.5"/>
-        </svg>
-    </button>
+    <!-- 왼쪽: PDF 뷰어 -->
+    <div class="pdf-panel" id="pdf-panel">
+        <iframe id="pdf-viewer" src=""></iframe>
+    </div>
+
+    <!-- 드래그 경계 -->
+    <div class="resizer" id="resizer"></div>
+
+    <!-- 오른쪽: 채팅 -->
+    <div class="chat-panel">
+        <!-- 메시지 영역 -->
+        <div class="chat-body" id="chat-body"></div>
+
+        <!-- 하단 입력 -->
+        <div class="chat-footer">
+            <textarea class="chat-input" id="chat-input" placeholder="메시지를 입력하세요" rows="1"></textarea>
+            <button class="send-btn" id="send-btn" onclick="sendMessage()">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.269 20.876L5.999 12zm0 0h7.5"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -306,6 +366,12 @@
     const fileName = params.get('file') || '';
 
     document.getElementById('header-title').textContent = fileName || 'PDF 챗봇';
+
+    // PDF 뷰어 src 설정
+    if (fileName) {
+        document.getElementById('pdf-viewer').src =
+            `http://127.0.0.1:8000/uploads/${encodeURIComponent(fileName)}.pdf`;
+    }
 
     const chatBody = document.getElementById('chat-body');
     const chatInput = document.getElementById('chat-input');
@@ -364,6 +430,7 @@
         chatBody.scrollTop = chatBody.scrollHeight;
     }
 
+    // XSS 공격 방지를 위한 처리 (/g = global. 입력의 전체를 플래그로 강제 치환)
     function escapeHtml(str) {
         return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
@@ -436,14 +503,75 @@
         chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
     });
 
-    // 초기 인사 메시지
-    if (fileName) {
-        appendAgentBubble(marked.parse(
-            `**${fileName}** 문서가 준비되었습니다.\n\n궁금한 내용을 질문해 주세요.`
-        ));
-    } else {
-        appendAgentBubble(marked.parse('문서를 찾을 수 없습니다. 목록 화면으로 돌아가 주세요.'));
+    // 리사이저 드래그
+    const resizer = document.getElementById('resizer');
+    const pdfPanel = document.getElementById('pdf-panel');
+    const wrapper = pdfPanel.parentElement;
+    let isResizing = false;
+
+    // 드래그 중 iframe 마우스 이벤트 차단용 오버레이
+    const iframeOverlay = document.createElement('div');
+    iframeOverlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:999;display:none;';
+    pdfPanel.style.position = 'relative';
+    pdfPanel.appendChild(iframeOverlay);
+
+    resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        resizer.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        iframeOverlay.style.display = 'block';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        const wrapperLeft = wrapper.getBoundingClientRect().left;
+        const wrapperWidth = wrapper.getBoundingClientRect().width;
+        let newWidth = e.clientX - wrapperLeft;
+        newWidth = Math.max(200, Math.min(newWidth, wrapperWidth - 200));
+        pdfPanel.style.width = newWidth + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        isResizing = false;
+        resizer.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        iframeOverlay.style.display = 'none';
+    });
+
+    // 채팅방 열릴 때 기존 대화 기록 불러오기
+    async function loadChatHistory() {
+        if (!fileName) {
+            appendAgentBubble(marked.parse('문서를 찾을 수 없습니다. 목록 화면으로 돌아가 주세요.'));
+            return;
+        }
+        try {
+            const res = await fetch(`http://127.0.0.1:8000/chat_history/${encodeURIComponent(fileName)}`);
+            const data = await res.json();
+
+            if (data.messages && data.messages.length > 0) {
+                data.messages.forEach(msg => {
+                    if (msg.type === 'human') {
+                        appendUserBubble(msg.content);
+                    } else if (msg.type === 'ai') {
+                        const agentRow = appendAgentBubble(marked.parse(msg.content));
+                        renderMath(agentRow);
+                    }
+                });
+            } else {
+                appendAgentBubble(marked.parse(
+                    `**${fileName}** 문서가 준비되었습니다.\n\n궁금한 내용을 질문해 주세요.`
+                ));
+            }
+        } catch (e) {
+            appendAgentBubble(marked.parse(
+                `**${fileName}** 문서가 준비되었습니다.\n\n궁금한 내용을 질문해 주세요.`
+            ));
+        }
     }
+
+    loadChatHistory();
 </script>
 
 </body>

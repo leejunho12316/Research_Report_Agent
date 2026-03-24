@@ -1,0 +1,74 @@
+  sequenceDiagram
+      actor User as 사용자 (Browser)
+      participant FE as Frontend (index.html)
+      participant API as FastAPI (main.py)
+      participant DB as SQLite (app.db)
+      participant BG as BackgroundTask
+      participant PP as pdf_processor.py
+      participant FS as 파일시스템 (/data/)
+      participant LLM as OpenAI GPT-4o
+
+      Note over API,DB: 서버 시작 시 init_db() 실행 — files 테이블 재생성
+
+      %% ── 1. 파일 목록 로드 ───────────────────────────────────────
+      FE->>+API: GET /files/
+      API->>FS: /data/ 디렉터리 탐색
+      FS-->>API: 폴더 목록 + vectordb 존재 여부
+      API-->>-FE: { files: [{name, status}, ...] }
+      FE->>User: 기존 파일 목록 렌더링
+
+      %% ── 2. PDF 업로드 ───────────────────────────────────────────
+      User->>FE: PDF 파일 선택
+      FE->>+API: POST /upload/ (multipart/form-data)
+      API->>FS: uploads/<filename> 저장
+      API->>+DB: INSERT files (status='processing')
+      DB-->>-API: task_id 반환
+      API--)BG: add_task(process_in_background, task_id, file_path)
+      API-->>-FE: { task_id, message }
+      FE->>User: 목록에 "처리 중..." 표시
+
+      %% ── 3. 폴링 ────────────────────────────────────────────────
+      loop 2초마다 (status = processing)
+          FE->>+API: GET /status/{task_id}
+          API->>+DB: SELECT status, result_path, progress WHERE id=task_id
+          DB-->>-API: row
+          API-->>-FE: { status, progress, result_url }
+          FE->>User: 진행 상태 업데이트
+      end
+
+      %% ── 4. 백그라운드 처리 ──────────────────────────────────────
+      activate BG
+      BG->>+PP: process_pdf_to_vectordb(file_path, task_id)
+
+      PP->>FS: [Step 1] Unstructured — PDF → 텍스트/테이블/figure 이미지<br/>→ /data/<name>/fig/
+      PP->>FS: [Step 2] PyMuPDF — 페이지별 PNG + TXT<br/>→ /data/<name>/pdf_to_image/ & pdf_to_text/
+      PP->>LLM: [Step 3] 페이지 이미지+텍스트 → 정제된 텍스트 (gpt-4.1)
+      LLM-->>PP: 정제 텍스트
+      PP->>LLM: [Step 4] 연속 페이지 쌍 → QA 합성 데이터 생성
+      LLM-->>PP: QA 데이터
+      PP->>FS: QA_result.jsonl / QA_result.json 저장
+      PP->>LLM: [Step 5] figure 이미지 → 맥락 기반 설명 생성
+      LLM-->>PP: 이미지 설명
+      PP->>FS: IMAGE_result.json 저장
+      PP->>FS: [Step 6] Chroma VectorDB 저장<br/>→ /data/<name>/vectordb/
+      PP-->>-BG: vectordb_path 반환
+
+      BG->>DB: UPDATE files SET status='completed', result_path=?
+      deactivate BG
+
+      %% ── 5. 폴링 완료 ───────────────────────────────────────────
+      FE->>+API: GET /status/{task_id}
+      API->>DB: SELECT ...
+      DB-->>API: status='completed'
+      API-->>-FE: { status: 'completed', result_url }
+      FE->>User: "처리 완료!" 표시 + 채팅 클릭 가능
+
+      %% ── 6. 채팅 ────────────────────────────────────────────────
+      User->>FE: 파일 클릭 → chat.html 이동
+      User->>FE: 질문 입력
+      FE->>+API: POST /chat/ { file_name, message }
+      API->>FS: /data/<name>/vectordb/ 로드 (Chroma)
+      API->>LLM: RAG 체인 실행 (retriever + gpt-4o)
+      LLM-->>API: 답변
+      API-->>-FE: { answer }
+      FE->>User: 마크다운 답변 렌더링

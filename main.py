@@ -22,6 +22,13 @@ app.add_middleware(
 
 os.makedirs("uploads", exist_ok=True)
 
+#FastAPI가 data 요청을 받으면 C:\data\에서 데이터를 찾도록 설정
+from fastapi.staticfiles import StaticFiles
+
+data_root = os.path.join(os.path.splitdrive(os.getcwd())[0] + os.sep, "data")
+app.mount("/data", StaticFiles(directory=data_root), name="data")
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 
 # 1. DB 설정 (상태를 기록할 'status' 컬럼 추가)
 def init_db():
@@ -142,7 +149,133 @@ def list_files():
     return {"files": result}
 
 
-# 6. 채팅 API — 해당 파일의 VectorDB를 로드하고 RAG 체인으로 답변 반환
+# # 6. 채팅 API — 해당 파일의 VectorDB를 로드하고 RAG 체인으로 답변 반환
+# class ChatRequest(BaseModel):
+#     file_name: str
+#     message: str
+
+# @app.post("/chat/")
+# def chat(request: ChatRequest):
+#     from langchain_chroma import Chroma
+#     from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+#     from langchain_core.prompts import PromptTemplate
+#     # from langchain.chains.combine_documents import create_stuff_documents_chain
+#     # from langchain.chains import create_retrieval_chain
+#     from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+#     from langchain_classic.chains import create_retrieval_chain
+#
+#     drive = os.path.splitdrive(os.getcwd())[0] + os.sep
+#     vectordb_path = os.path.join(drive, "data", request.file_name, "vectordb")
+#
+#     if not os.path.isdir(vectordb_path):
+#         return {"error": f"VectorDB를 찾을 수 없습니다: {request.file_name}"}
+#
+#     embedding = OpenAIEmbeddings()
+#     vectordb = Chroma(
+#         persist_directory=vectordb_path,
+#         embedding_function=embedding,
+#         collection_name="multimodal_rag",
+#     )
+#     retriever = vectordb.as_retriever(search_kwargs={"k": 4})
+#
+#     template = """당신은 PDF 리포트를 상세히 설명하는 AI 어시스턴트입니다.
+#
+# 1. 주어진 검색 결과를 바탕으로 질문에 대한 답변을 마크다운 문법으로 작성하세요.
+# 2. 검색 결과 중 '## 이미지 콘텐츠'가 있다면 출처를 참고하여 답변 중간에 마크다운 이미지 태그로 포함하세요.
+# 2-1. 마크다운 이미지 태그의 src 값 앞부분에는 "http://127.0.0.1:8000/"를 붙여주세요
+#    예시) <img src="http://127.0.0.1:8000/data/파일명/fig/figure-1-1.jpg">
+# 3. 수식은 반드시 $$로 감싼 LaTeX 형식으로 작성하세요.
+# 3-1. 수식은 반드시 $$...$$ (display) 또는 $...$ (inline) 형식으로 작성하십시오. []를 사용해서는 안됩니다.
+# 4. 검색 결과에 없는 내용은 답변하지 마세요.
+#
+# {context}
+#
+# Question: {input}
+# Answer:"""
+#
+#     prompt = PromptTemplate.from_template(template)
+#     llm = ChatOpenAI(model_name="gpt-4o", temperature=0)
+#
+#     llm_prompt_chain = create_stuff_documents_chain(llm, prompt)
+#     qa_chain = create_retrieval_chain(retriever, llm_prompt_chain)
+#
+#     result = qa_chain.invoke({"input": request.message})
+#
+#     print(f'llm raw result : {result}')
+#
+#     return {"answer": result["answer"]}
+
+
+# 7. 파일 기반 대화 기록 클래스
+import json
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.chat_history import BaseChatMessageHistory
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+
+class PdfFileChatHistory(BaseChatMessageHistory):
+    """PDF 폴더별로 chat_history.json에 전체 기록 저장, LLM엔 최근 2쌍만 제공"""
+
+    def __init__(self, file_path: str):
+        self.file_path = file_path
+        self._all_messages: list[BaseMessage] = []
+        self._load()
+
+    @property
+    def messages(self) -> list[BaseMessage]:
+        return self._all_messages[-4:]  # LLM 컨텍스트: 최근 2쌍(4개)
+
+    def add_message(self, message: BaseMessage) -> None:
+        self._all_messages.append(message)
+        self._save()
+
+    def add_messages(self, messages: list[BaseMessage]) -> None:
+        self._all_messages.extend(messages)
+        self._save()
+
+    def clear(self) -> None:
+        self._all_messages = []
+        self._save()
+
+    def _load(self):
+        if not os.path.exists(self.file_path):
+            return
+        with open(self.file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        for msg in data:
+            if msg['type'] == 'human':
+                self._all_messages.append(HumanMessage(content=msg['content']))
+            elif msg['type'] == 'ai':
+                self._all_messages.append(AIMessage(content=msg['content']))
+
+    def _save(self):
+        os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
+        data = []
+        for msg in self._all_messages:
+            if isinstance(msg, HumanMessage):
+                data.append({'type': 'human', 'content': msg.content})
+            elif isinstance(msg, AIMessage):
+                data.append({'type': 'ai', 'content': msg.content})
+        with open(self.file_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _get_history_path(file_name: str) -> str:
+    drive = os.path.splitdrive(os.getcwd())[0] + os.sep
+    return os.path.join(drive, "data", file_name, "chat_history.json")
+
+
+# 8. 대화 기록 조회 API
+@app.get("/chat_history/{file_name:path}")
+def get_chat_history(file_name: str):
+    history_path = _get_history_path(file_name)
+    if not os.path.exists(history_path):
+        return {"messages": []}
+    with open(history_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    return {"messages": data}
+
+
+# 9. 채팅 API (파일 기반 대화 기록, 이전 2개 대화 참고)
 class ChatRequest(BaseModel):
     file_name: str
     message: str
@@ -151,9 +284,7 @@ class ChatRequest(BaseModel):
 def chat(request: ChatRequest):
     from langchain_chroma import Chroma
     from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-    from langchain_core.prompts import PromptTemplate
-    # from langchain.chains.combine_documents import create_stuff_documents_chain
-    # from langchain.chains import create_retrieval_chain
+    from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
     from langchain_classic.chains.combine_documents import create_stuff_documents_chain
     from langchain_classic.chains import create_retrieval_chain
 
@@ -169,26 +300,46 @@ def chat(request: ChatRequest):
         embedding_function=embedding,
         collection_name="multimodal_rag",
     )
-    retriever = vectordb.as_retriever(search_kwargs={"k": 10})
+    retriever = vectordb.as_retriever(search_kwargs={"k": 4})
 
     template = """당신은 PDF 리포트를 상세히 설명하는 AI 어시스턴트입니다.
 
 1. 주어진 검색 결과를 바탕으로 질문에 대한 답변을 마크다운 문법으로 작성하세요.
 2. 검색 결과 중 '## 이미지 콘텐츠'가 있다면 출처를 참고하여 답변 중간에 마크다운 이미지 태그로 포함하세요.
-   예시) <img src="/data/파일명/fig/figure-1-1.jpg">
-3. 수식은 $$로 감싼 LaTeX 형식으로 작성하세요.
+2-1. 마크다운 이미지 태그의 src 값 앞부분에는 "http://127.0.0.1:8000/"를 붙여주세요
+   예시) <img src="http://127.0.0.1:8000/data/파일명/fig/figure-1-1.jpg">
+3. 수식은 반드시 $$로 감싼 LaTeX 형식으로 작성하세요.
+3-1. 수식은 반드시 $$...$$ (display) 또는 $...$ (inline) 형식으로 작성하십시오. []를 사용해서는 안됩니다.
 4. 검색 결과에 없는 내용은 답변하지 마세요.
 
-{context}
+{context}"""
 
-Question: {input}
-Answer:"""
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", template),
+        MessagesPlaceholder(variable_name="chat_history"),
+        ("human", "{input}"),
+    ])
 
-    prompt = PromptTemplate.from_template(template)
     llm = ChatOpenAI(model_name="gpt-4o", temperature=0)
-
     llm_prompt_chain = create_stuff_documents_chain(llm, prompt)
     qa_chain = create_retrieval_chain(retriever, llm_prompt_chain)
 
-    result = qa_chain.invoke({"input": request.message})
+    def get_session_history(session_id: str) -> PdfFileChatHistory:
+        return PdfFileChatHistory(_get_history_path(session_id))
+
+    chain_with_history = RunnableWithMessageHistory(
+        qa_chain,
+        get_session_history,
+        input_messages_key="input",
+        history_messages_key="chat_history",
+        output_messages_key='answer'
+    )
+
+    result = chain_with_history.invoke(
+        {"input": request.message},
+        config={"configurable": {"session_id": request.file_name}},
+    )
+
+    print(f'llm raw result : {result}')
+
     return {"answer": result["answer"]}

@@ -106,6 +106,22 @@ def _extract_with_unstructured(pdf_path: str, fig_dir: str):
         extract_image_block_output_dir=fig_dir,
     )
 
+    #작은 이미지 삭제
+    for filename in os.listdir(fig_dir):
+        file_path = os.path.join(fig_dir, filename)
+
+        try:
+            with Image.open(file_path) as img:
+                width, height = img.size
+
+            if width <= 100 or height <= 100:
+                os.remove(file_path)
+
+        except Exception as e:
+            print(f"파일 열기 실패: {filename}, 에러: {e}")
+
+
+
     tables, texts = [], []
     for chunk in raw_pdf_elements:
         if "CompositeElement" in str(type(chunk)):
@@ -473,13 +489,6 @@ def process_pdf_to_vectordb(file_path: str, task_id=None) -> str:
         json.dump(image_result, f, ensure_ascii=False)
     print(f'  이미지 설명 수: {len(image_result)}')
 
-
-    # 디버깅 - Step 5까지 진행했는데 Step6에서 막혀서 진행할 때
-    with open(qa_json_path, 'r', encoding='utf-8') as f:
-        qa_result = json.load(f)
-    with open(image_json_path, 'r', encoding='utf-8') as f:
-        image_result = json.load(f)
-    print(f'  QA 항목 수: {len(qa_result)} / 이미지 설명 수: {len(image_result)}')
 
     # Step 6 ─ VectorDB 저장
     print('[Step 6] Chroma VectorDB 저장 중...')
