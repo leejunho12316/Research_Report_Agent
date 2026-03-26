@@ -509,3 +509,7 @@ def process_pdf_to_vectordb(file_path: str, task_id=None) -> str:
     print(f'  총 저장 문서 수: {count}')
 
     return vectordb_dir
+
+
+
+process_pdf_to_vectordb(r'C:\Users\goon\PycharmProjects\Research_Report_Agent\uploads\20260320_OCI홀딩스 (010060_매수).pdf')
