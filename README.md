@@ -26,7 +26,7 @@ Unstructured 패키지 사용해 데이터 시각화 차트 이미지 추출.
 
 PyMuPDF 사용해 pdf 전체 페이지 이미지 변환과 원본 텍스트 추출.
 
-<img src="./images/pdf_image.png" width="300">
+<img src="./images/pdf_image.png" width="500">
 
 
 **3. 페이지 정제**
@@ -184,7 +184,7 @@ LLM에게 전체 pdf 페이지 이미지를 참고해 맥락을 파악하며 추
 
 → **SQLite**에 pdf 파일 별 전처리 현황 업데이트로 사용자 UI에 진행 과정 알림.
 
-<img src="./images/figure-3-5.jpg" width = "300">
+<img src="./images/figure-3-5.jpg" width = "400">
 
 ```
 ## 이미지 콘텐츠
