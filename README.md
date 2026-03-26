@@ -25,7 +25,8 @@ Unstructured 패키지 사용해 데이터 시각화 차트 이미지 추출.
 PyMuPDF 사용해 pdf 전체 페이지 이미지 변환과 원본 텍스트 추출.
 
 <img src="./images/pdf_image.png" width="300">
---pdf 데이터 이미지, 텍스트
+
+`print('ㅁㄴㅇㅁㄴㅇ')`
 
 **3. 페이지 정제**
 
