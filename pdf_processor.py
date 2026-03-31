@@ -1,5 +1,7 @@
 # pdf_processor.py
 """
+#pip install fastapi uvicorn[standard] pydantic python-dotenv PyMuPDF numpy openai Pillow tqdm nltk langchain-core langchain-openai langchain-chroma langchain-classic unstructured[pdf] requests markdown gradio ipython
+
 멀티모달 RAG 데이터 처리 파이프라인
 
 PDF 파일 경로를 입력받아 아래 단계를 순서대로 실행하고
