@@ -474,7 +474,7 @@ len(QA_result_raw), len(QA_result)
 import json
 
 # 저장하기
-with open("QA_result.json", "w", encoding="utf-8") as f:
+with open("../evaluation/json/QA_result.json", "w", encoding="utf-8") as f:
     json.dump(QA_result, f)
 
 # 불러오기
@@ -566,7 +566,7 @@ with open("IMAGE_result.json", "w", encoding="utf-8") as f:
 """#데이터 합치기"""
 
 # QA_result, IMAGE_result 불러오기
-with open("QA_result.json", "r") as f:
+with open("../evaluation/json/QA_result.json", "r") as f:
     doc_result = json.load(f)
 with open("IMAGE_result.json", "r") as f:
     image_result_lst = json.load(f)

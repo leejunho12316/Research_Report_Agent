@@ -36,7 +36,7 @@ load_dotenv()
 
 REFINED_PAGES_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "temp_res", "refined_pages_OCI.json"
+    "temp_res", "json/refined_pages_OCI.json"
 )
 
 OUTPUT_CSV_PATH = os.path.join(
