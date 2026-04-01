@@ -4,8 +4,10 @@
 
 import os
 
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+import numpy as np
 import pandas as pd
 import seaborn as sns
 
@@ -39,7 +41,9 @@ def main():
     sns.set_theme(style="whitegrid", font_scale=1.2)
     fig, ax = plt.subplots(figsize=(9, 6))
 
-    palette = sns.light_palette("#1565C0", n_colors=len(result_cols) + 2, reverse=False)[2:]
+    cmap = plt.get_cmap("Blues")
+    norm = mcolors.Normalize(vmin=min(correct_counts) * 0.5, vmax=max(correct_counts) * 1.2)
+    palette = [cmap(norm(c)) for c in correct_counts]
     sns.barplot(data=plot_df, x="방식", y="정답 수", palette=palette, width=0.6, ax=ax)
 
     # 막대 위에 개수 표시
@@ -60,7 +64,7 @@ def main():
     ax.set_xlabel("")
     ax.set_ylabel("Accuracy", fontsize=12)
     ax.set_title(f"Accuracy by Data Processing Method (Total {total} Questions)", fontsize=14, fontweight="bold")
-    ax.set_ylim(40, 100)
+    ax.set_ylim(50, 100)
     ax.yaxis.set_major_locator(ticker.MultipleLocator(10))
 
     plt.tight_layout()
