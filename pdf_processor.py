@@ -64,6 +64,7 @@ nltk.download('averaged_perceptron_tagger_eng', quiet=True)
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from unstructured.partition.pdf import partition_pdf #시간 제일 많이 걸림
 
@@ -496,8 +497,19 @@ def process_pdf_to_vectordb(file_path: str, task_id=None) -> str:
     # Step 6 ─ VectorDB 저장
     print('[Step 6] Chroma VectorDB 저장 중...')
     _update_progress(task_id, '[Step 6] Chroma VectorDB 저장 중...')
-    total_docs = qa_result + image_result
-    langchain_docs = [Document(page_content=doc) for doc in total_docs]
+
+    #LLM 정제 데이터도 추가
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+    refined_docs = []
+    for i in range(len(refined_pages)):
+        chunks = splitter.split_text(refined_pages[i])
+        for chunk in chunks:
+            refined_docs.append(Document(
+                page_content=chunk,
+                metadata={"source": os.path.basename(pairs[i][0])}
+            ))
+    #QA 합성 데이터 + 이미지 설명 데이터 추가
+    langchain_docs = [Document(page_content=doc) for doc in qa_result + image_result] + refined_docs
 
     vectordb = Chroma.from_documents(
         documents=langchain_docs,
