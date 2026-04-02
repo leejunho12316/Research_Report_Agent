@@ -39,7 +39,7 @@ poppler
 https://github.com/oschwartz10612/poppler-windows/releases
 bin/ PATH 추가
 
-!pip install -U "unstructured[all-docs]" lxml pillow==9.5.0 pdf2image==1.16.3 layoutparser[layoutmodels,tesseract]==0.3.4
+!pip install -U "unstructured[all-res]" lxml pillow==9.5.0 pdf2image==1.16.3 layoutparser[layoutmodels,tesseract]==0.3.4
 """
 
 import os
@@ -525,5 +525,3 @@ def process_pdf_to_vectordb(file_path: str, task_id=None) -> str:
     return vectordb_dir
 
 
-
-process_pdf_to_vectordb(r'C:\Users\goon\PycharmProjects\Research_Report_Agent\uploads\20260320_OCI홀딩스 (010060_매수).pdf')

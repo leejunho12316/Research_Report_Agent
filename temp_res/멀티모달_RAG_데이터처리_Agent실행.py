@@ -28,7 +28,7 @@ Unstructured를 위한 도구 설치
 
 # Commented out IPython magic to ensure Python compatibility.
 # %%capture --no-stderr
-# !pip install -U "unstructured[all-docs]" lxml pillow==9.5.0 pdf2image==1.16.3 layoutparser[layoutmodels,tesseract]==0.3.4
+# !pip install -U "unstructured[all-res]" lxml pillow==9.5.0 pdf2image==1.16.3 layoutparser[layoutmodels,tesseract]==0.3.4
 
 import nltk
 

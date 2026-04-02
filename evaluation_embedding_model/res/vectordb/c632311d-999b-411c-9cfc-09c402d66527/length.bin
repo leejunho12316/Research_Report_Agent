@@ -1,0 +1,16 @@
+alFrame.f_back
+
+    return frames
+
+
+def dump_frames(thread_id):
+    sys.stdout.write('dumping frames\n')
+    if thread_id != get_current_thread_id(threading.current_thread()):
+        raise VariableError("find_frame: must execute on same thread")
+
+    curFrame = get_frame()
+    for frame in _iter_frames(curFrame):
+        sys.stdout.write('%s\n' % pickle.dumps(frame))
+
+
+# =========================
