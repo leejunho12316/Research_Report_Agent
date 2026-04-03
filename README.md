@@ -1,47 +1,64 @@
 # Research_Report_Agent
-증권사 기업분석, 투자분석 리서치 리포트 기반 MultiModal-RAG LLM Agent 서비스.
+증권사 기업분석, 투자분석 리서치 리포트 기반 MultiModal-RAG LLM Agent 서비스. <br>
 PDF 업로드부터 챗봇을 이용한 질의응답까지 전 과정을 자동화한 AI 파이프라인.
 
 <img src="res/banner.png">
 
-## Screenshot
+# 목차
+- [Screenshot](#screenshot)
+- [Stacks](#stacks)
+- [Implementation Details](#implementation-details)
+  - [데이터 처리 파이프라인](#데이터-처리-파이프라인)
+  - [Evaluation](#evaluation)
+    - [데이터 전처리 방식에 따른 RAG 검색 성능평가](./evaluation_data_processing_method/README.md)
+    - [임베딩 모델에 따른 RAG 검색 성능평가](./evaluation_embedding_model/README.md)
+  - [Multimodal Processing](#multimodal-processing)
+  - [Multiturn Processing](#multiturn-processing)
+
+
+    
+
+
+
+
+# Screenshot
 
 <img src="readme_images/screenshot_index.png">
 <img src="readme_images/screenshot.png">
 
-## 목차
-- [데이터 처리 파이프라인](#데이터-처리-파이프라인)
-- [Evaluation](#evaluation)
+<br><br><br>
 
-## 기술 스택
+## Stacks
 
-**📊 Data** : 
+**Data** : 
 ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Unstructured](https://img.shields.io/badge/Unstructured-FF6B35?style=flat-square&logoColor=white)
 ![PyMuPDF](https://img.shields.io/badge/PyMuPDF-00A86B?style=flat-square&logoColor=white)
 ![Pandas](https://img.shields.io/badge/Pandas-150458?style=flat-square&logo=pandas&logoColor=white)
 ![NumPy](https://img.shields.io/badge/NumPy-013243?style=flat-square&logo=numpy&logoColor=white)
 
-**🤖 AI** : 
+**AI** : 
 ![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=flat-square&logo=langchain&logoColor=white)
 ![OpenAI](https://img.shields.io/badge/OpenAI_API-412991?style=flat-square&logo=openai&logoColor=white)
 ![MultiModal RAG](https://img.shields.io/badge/MultiModal--RAG-FF6F61?style=flat-square&logoColor=white)
 ![MultiTurn](https://img.shields.io/badge/MultiTurn-4A90D9?style=flat-square&logoColor=white)
 ![LLM Agent](https://img.shields.io/badge/LLM_Agent-F5A623?style=flat-square&logoColor=white)
 
-**🗄️ DB** : 
+**Database** : 
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)
 ![ChromaDB](https://img.shields.io/badge/ChromaDB-FF5A1F?style=flat-square&logoColor=white)
 
-**⚙️ Backend** : 
+**Backend** : 
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
 
-**🎨 Frontend** : 
+**Frontend** : 
 ![HTML](https://img.shields.io/badge/HTML-E34F26?style=flat-square&logo=html5&logoColor=white)
 ![CSS](https://img.shields.io/badge/CSS-663399?style=flat-square&logo=css&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
 
-## Notes
+<br><br><br>
+
+# Notes
 
 ### Special Requirements
 1. tesseract <br> https://github.com/UB-Mannheim/tesseract/wiki
@@ -52,74 +69,10 @@ Library/bin/ 폴더 PATH에 추가
 
 3. pip install <br> !pip install -U "unstructured[all-docs]" lxml pillow==9.5.0 pdf2image==1.16.3 layoutparser[layoutmodels,tesseract]==0.3.4
 
-### 노트
-정답 채점 시 반올림 한 것은 어떻게 해야할까? -> ㅇ. 정보를 찾았다는 뜻이기 때문.
-
-QA 데이터 정체 성능평가: 정제, QA 따로 일때 알지 못했던 내용들을 잘 검색하는 성과를 보여줌.
-틀린 문제의 절반은 십억원, 억원 등 액수 단위에 있어서의 오류였다. 이는 검색 자체는 올바르게 되었지만 더 넓은 문맥에서의 정보가 포함되지 않아 이해가 부족하다는 의미.
-
-임베딩 모델 별 평가
-? LLM 정제 데이터 + QA 합성 데이터 + 이미지 전저리 데이터 전부 다 vectordb 구성하면 **답변**퀄리티는 좋아진다. 하지만 정확한 측저을 해야 하는 임베딩 모델 평가 과정에서는 데이터 양이 너무 많아지면 특정한 하나의 문서를 찾아낼 확률이 급격히 낮아진다. 따라서 임베딩 모델에 따른 **검색 성능 평가**는 의도적으로 데이터 개수를 줄여서 진행한다.
-
-점수 너무 낮은 이유 가설
-~~1. 평가 매트릭 함수가 잘못됨. -> retriever의 k가 5로 설정되어있었음~~
-~~2. 질문이 검색이 잘 안되도록 잘못 만들어짐.~~
-~~3. doc이 너무 많아 검색이 제대로 될 리가 없음.~~
-
-임베딩 모델의 크기 -> bge-m3, OpenAI large model 성능 측정
 
 <br><br><br>
 
-## 멀티모달 처리
-
-이미지 캡션 데이터 생성 시 출처와 함께 저장. 대화 진행 중 LLM이 이미지 출처가 포함되어 있는 데이터를 발견하면 html 형식으로 전환해 답변 사이에 첨부. Browser는 자동으로 img src를 요청하고 FastAPI StaticFiles가 URL로 직접 서빙.
-
-
-
-
-```
-## 이미지 콘텐츠
-                                                                                                                                                                                                         
-  이 이미지는 동아쏘시오홀딩스 관련 PDF 보고서(2026.3.27 작성)의 한 부분을 발췌한 것입니다. 전체 이미지에서 이 그래프는 "그림 4. 동아쏘시오홀딩스 연간 실적 추이" 제목 아래에 위치하며, 연도별 매출액과
-  영업이익 변화를 바(Bar) 차트로 나타냅니다.                                                                                                                                                             
-
-  - X축: 2021~2025년
-  - Y축: 십억원 단위, 매출액(회색)·영업이익(주황색)
-  - 매출액: 2021년 8,820억 → 2025년 1조 4,300억으로 꾸준히 증가
-
-  출처: /data\20260327_동아쏘시오홀딩스 (000640_Not Rated)\fig\figure-3-8.jpg
-```
-
--> LLM이 html 형식으로 출처 전환</img src="http://127.0.0.1:8000/data/.../figure-3-8.jpg"> <br>
--> FastAPI StaticFiles가 URL로 직접 서빙
-
-<img src="./readme_images/멀티모달 예시 1.png" width = '500'>
-<img src="./readme_images/멀티모달 예시 2.png" width = '500'>
-
-## 멀티턴 처리
-
-대화 기록을 PDF 파일 단위로 저장하고 context에는 최근 2쌍 (user, assistant 4개의 매세지)를 전달하는 방식으로 작동한다.
-
-
-**흐름**
-
-1. 채팅 요청 수신 시 `file_name`의 대화 기록 로드.
-2. `RunnableWithMessageHistory`가 RAG 체인에 대화 기록을 자동으로 첨부.
-3. 답변 완료 후 HumanMessage·AIMessage를 JSON 저장 파일에 추가 저장.
-4. 서버 재시작, 채팅방 종료 후 재접속 후에도 이전 대화 맥락 유지.
-
-
-<img src="./readme_images/멀티턴 예시 1.png" width = '500'>
-<img src="./readme_images/멀티턴 예시 2.png" width = '500'>
-
-
-# 성능 측정
-
-- [데이터 전처리 방식에 따른 RAG 검색 성능평가](./evaluation_data_processing_method/README.md)
-- [임베딩 모델에 따른 RAG 검색 성능평가](./evaluation_embedding_model/README.md)
-
-
-
+# Implementation Details
 ## 데이터 처리 파이프라인
 
 
@@ -342,6 +295,77 @@ LLM에게 전체 pdf 페이지 이미지를 참고해 맥락을 파악하며 추
 
 → **SQLite**에 pdf 파일 별 전처리 현황 업데이트로 사용자 UI에 진행 과정 알림.
 
+
+<br><br><br>
+
+## Evaluation
+
+### - [데이터 전처리 방식에 따른 RAG 검색 성능평가](./evaluation_data_processing_method/README.md)
+### - [임베딩 모델에 따른 RAG 검색 성능평가](./evaluation_embedding_model/README.md)
+
+<br><br><br>
+
+## Multimodal Processing
+
+이미지 캡션 데이터 생성 시 출처와 함께 저장. 대화 진행 중 LLM이 이미지 출처가 포함되어 있는 데이터를 발견하면 html 형식으로 전환해 답변 사이에 첨부. Browser는 자동으로 img src를 요청하고 FastAPI StaticFiles가 URL로 직접 서빙.
+
+
+
+
+```
+## 이미지 콘텐츠
+                                                                                                                                                                                                         
+  이 이미지는 동아쏘시오홀딩스 관련 PDF 보고서(2026.3.27 작성)의 한 부분을 발췌한 것입니다. 전체 이미지에서 이 그래프는 "그림 4. 동아쏘시오홀딩스 연간 실적 추이" 제목 아래에 위치하며, 연도별 매출액과
+  영업이익 변화를 바(Bar) 차트로 나타냅니다.                                                                                                                                                             
+
+  - X축: 2021~2025년
+  - Y축: 십억원 단위, 매출액(회색)·영업이익(주황색)
+  - 매출액: 2021년 8,820억 → 2025년 1조 4,300억으로 꾸준히 증가
+
+  출처: /data\20260327_동아쏘시오홀딩스 (000640_Not Rated)\fig\figure-3-8.jpg
+```
+
+-> LLM이 html 형식으로 출처 전환</img src="http://127.0.0.1:8000/data/.../figure-3-8.jpg"> <br>
+-> FastAPI StaticFiles가 URL로 직접 서빙
+
+<img src="./readme_images/멀티모달 예시 1.png" width = '500'>
+<img src="./readme_images/멀티모달 예시 2.png" width = '500'>
+
+<br><br><br>
+
+## Multiturn Processing
+
+대화 기록을 PDF 파일 단위로 저장하고 context에는 최근 2쌍 (user, assistant 4개의 매세지)를 전달하는 방식으로 작동한다.
+
+
+**흐름**
+
+1. 채팅 요청 수신 시 `file_name`의 대화 기록 로드.
+2. `RunnableWithMessageHistory`가 RAG 체인에 대화 기록을 자동으로 첨부.
+3. 답변 완료 후 HumanMessage·AIMessage를 JSON 저장 파일에 추가 저장.
+4. 서버 재시작, 채팅방 종료 후 재접속 후에도 이전 대화 맥락 유지.
+
+
+<img src="./readme_images/멀티턴 예시 1.png" width = '500'>
+<img src="./readme_images/멀티턴 예시 2.png" width = '500'>
+
+<br><br><br>
+
 <br><br><br>
 
 
+### 노트
+정답 채점 시 반올림 한 것은 어떻게 해야할까? -> ㅇ. 정보를 찾았다는 뜻이기 때문.
+
+QA 데이터 정체 성능평가: 정제, QA 따로 일때 알지 못했던 내용들을 잘 검색하는 성과를 보여줌.
+틀린 문제의 절반은 십억원, 억원 등 액수 단위에 있어서의 오류였다. 이는 검색 자체는 올바르게 되었지만 더 넓은 문맥에서의 정보가 포함되지 않아 이해가 부족하다는 의미.
+
+임베딩 모델 별 평가
+? LLM 정제 데이터 + QA 합성 데이터 + 이미지 전저리 데이터 전부 다 vectordb 구성하면 **답변**퀄리티는 좋아진다. 하지만 정확한 측저을 해야 하는 임베딩 모델 평가 과정에서는 데이터 양이 너무 많아지면 특정한 하나의 문서를 찾아낼 확률이 급격히 낮아진다. 따라서 임베딩 모델에 따른 **검색 성능 평가**는 의도적으로 데이터 개수를 줄여서 진행한다.
+
+점수 너무 낮은 이유 가설
+~~1. 평가 매트릭 함수가 잘못됨. -> retriever의 k가 5로 설정되어있었음~~
+~~2. 질문이 검색이 잘 안되도록 잘못 만들어짐.~~
+~~3. doc이 너무 많아 검색이 제대로 될 리가 없음.~~
+
+임베딩 모델의 크기 -> bge-m3, OpenAI large model 성능 측정
