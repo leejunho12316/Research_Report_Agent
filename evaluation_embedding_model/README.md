@@ -34,7 +34,7 @@ OpenAI Embedding Model (text-embedding-ada-002, text-embedding-3-large), BGE-m3,
 ... 94개
 ```
 
-### 3.평가 방식
+### 3.평가 지표
 
 각 Retriever에 전체 Query를 입력하여 상위 k개 문서를 검색한 뒤, 성능 Metric을 k = 1, 3, 5, 10 구간별로 집계한다. Metric은 Accuracy, Precision, Recall, MRR, NDCG, MAP을 포함한다.
 
@@ -47,6 +47,16 @@ OpenAI Embedding Model (text-embedding-ada-002, text-embedding-3-large), BGE-m3,
 | **NDCG@k** | 정답 문서의 순위에 로그 감쇠(log₂(rank+1))를 적용한 DCG를 이상적 순서(IDCG)로 정규화한 값. 0~1 범위, 순위 민감도가 높음 |
 | **MAP@k** | 정답 문서를 발견할 때마다 산출한 Precision의 평균(Average Precision)을 전체 Query에 대해 재평균. 순위와 다중 정답을 동시에 반영 |
 
+### 1.지표별 해석
+- Accuracy : 검색 문서 중 정답 문서가 포함되어 있는지 여부를 평가한 Metric. RAG 답변 성능에 가장 중요한 지표
+- Precision : 검색 문서 개수 중 정답 문서가 포함되어 있는지 여부를 평가한 Metric. 검색 문서 개수가 많아질 수록 분모가 커져 값이 빠르게 줄어든다.
+- Recall : 전체 정답 문서 개수 대비 검색한 문서에 포함된 정답 문서가 개수 Metric. 이 성능평가의 경우 정답 문서는 질문 당 하나이기 때문에 Accuracy 점수와 동일.
+- MRR : 처음으로 정답 문서가 등장한 순위의 역수. 0.5일 경우 정답 문서가 2번째로 나오고 0.33일 경우 3번째로 나온다는 뜻.
+
+- NDCG : 정답인 문서에 대해 log2(rank+1)합 DCG, 모든 문서가 정답일 때 log2(rank+1)합 Ideal DCG를 구해 DCG/Ideal DCG 값을 사용. 계산 방식은 다르지만 정답 문서의 위치를 고려한 Mertic이기 때문에 MRR값 변동을 따라감.
+- MAP : 1위부터 문서의 위치까지 '정답 개수/전체 문서 개수'의 평균. 정답 문서가 빠르게 나올 수록 점수가 높아짐.
+Mean Average Precision
+- 
 <br><br><br>
 
 ## 1차 성능평가
@@ -64,30 +74,17 @@ OpenAI Embedding Model (text-embedding-ada-002, text-embedding-3-large), BGE-m3,
   </tr>
 </table>
 
-### 1.지표별 해석
-- Accuracy : 검색 문서 중 정답 문서가 포함되어 있는지 여부를 평가한 Metric. RAG 답변 성능에 가장 중요한 지표
-- Precision : 검색 문서 개수 중 정답 문서가 포함되어 있는지 여부를 평가한 Metric. 검색 문서 개수가 많아질 수록 분모가 커져 값이 빠르게 줄어든다.
-- Recall : 전체 정답 문서 개수 대비 검색한 문서에 포함된 정답 문서가 개수 Metric. 이 성능평가의 경우 정답 문서는 질문 당 하나이기 때문에 Accuracy 점수와 동일.
-- MRR : 처음으로 정답 문서가 등장한 순위의 역수. 0.5일 경우 정답 문서가 2번째로 나오고 0.33일 경우 3번째로 나온다는 뜻.
 
-- NDCG : 정답인 문서에 대해 log2(rank+1)합 DCG, 모든 문서가 정답일 때 log2(rank+1)합 Ideal DCG를 구해 DCG/Ideal DCG 값을 사용. 계산 방식은 다르지만 정답 문서의 위치를 고려한 Mertic이기 때문에 MRR값 변동을 따라감.
-- MAP : 1위부터 문서의 위치까지 '정답 개수/전체 문서 개수'의 평균. 정답 문서가 빠르게 나올 수록 점수가 높아짐.
-Mean Average Precision
-
-
-### 2.결과 해석
+### 1.결과 해석
 k=1에서 Accuracy의 평균이 0.4이다. 이는 첫 번쨰 검색 결과가 정답인 경우가 40%에 불과하다는 뜻이다. RAG 시스템에서 LLM에 전달되는 context의 신뢰도가 낮음을 의미하며 보통 0.6 이상은 되어야 하기 때문에 서비스에 적합하지 않다고 할 수 있다.<br>
 k=5에서 Accuracy의 평균이 0.7, MRR의 평균이 0.5이다. k값이 높아짐에 따라 정답 문서 포함률이 70%까지 상승하지만 상위권에 검색되는 비율이 낮는 의미이다.
 BM25의 성능이 낮다. 금융 리포트 특성상 전문 용어와 수치 데이터가 많아형태소 기반 매칭만으로는 의미적 유사도를 포착하기 어렵다. 이로 인해 Ensemble Retriever 역시 BM25의 노이즈로 인해 성능이 저하된다.
 
 
-### 3.원인 및 개선 방향
+### 2.원인 및 개선 방향
 
 - ~~Cross-Encoder(Reranker) 적용~~ — 랭킹 개선 효과는 있으나, 근본적인 임베딩 표현력 한계를 해소하지 못함
 - **고성능 임베딩 모델 교체** — 파라미터 수 및 학습 데이터 규모가 큰 모델로 교체하여 의미 표현력 자체를 향상
-
-~~-> cross encoder(reranker 추가)~~ <br>
--> 큰 임베딩 모델 교체 bge-m3, OpenAI text-embedding-3-large
 
 <br><br><br>
 ---
