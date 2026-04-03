@@ -33,7 +33,7 @@
 
 각 수치는 각각의 방식으로 전처리한 데이터를 사용해 vector DB 구성 후 RAG 답변을 생성하여 정답과 대조한 Accuracy 값이다.
 
-<img src="evaluation_data_processing_method/evaluation_visualization.png" width="500">
+<img src="./evaluation_visualization.png" width="500">
 
 
 | 방식 | Accuracy (%) | 정답 수 / 전체 | Vector DB 구성 방식                                    |
