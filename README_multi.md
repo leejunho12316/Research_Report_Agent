@@ -15,11 +15,19 @@
   출처: /data\20260327_동아쏘시오홀딩스 (000640_Not Rated)\fig\figure-3-8.jpg
 ```
 
--> LLM이 html 형식으로 출처 전환</img src="http://127.0.0.1:8000/data/.../figure-3-8.jpg"> <br>
+-> LLM이 html 형식으로 출처 전환 <br>
+
+</img src="http://127.0.0.1:8000/data/.../figure-3-8.jpg"> <br>
+
 -> FastAPI StaticFiles가 URL로 직접 서빙
 
 <img src="./readme_images/멀티모달 예시 1.png" width = '500'>
-<img src="./readme_images/멀티모달 예시 2.png" width = '500'>
+
+특정 그래프 해설을 요구했을 때 해당 그래프 이미지를 가져와 해설하는 것이 가능하다.
+
+<img src="./readme_images/멀티모달 예시 3.png" width = '500'>
+
+특정 이미지/그래프를 언급하지 않아도 필요 시 답변에 이미지를 추가하는 모습.
 
 <br><br><br>
 
@@ -37,7 +45,12 @@
 
 
 <img src="./readme_images/멀티턴 예시 1.png" width = '500'>
+
+OCI 홀딩스의 2023년 ROE를 먼저 물은 후 2027년, 2025년에 대해 물었을 때 ROE를 명시하지 않아도 ROE에 대해 대답을 하는 모습.
+
 <img src="./readme_images/멀티턴 예시 2.png" width = '500'>
+
+동아씨오 홀딩스 매출액 추이에 대해 먼저 물은 후 그 이유를 물으니 매출액을 명시하지 않아도 매출액 변동 원인에 대해 대답을 하는 모습.
 
 <br><br><br>
 
