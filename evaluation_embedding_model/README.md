@@ -47,16 +47,6 @@ OpenAI Embedding Model (text-embedding-ada-002, text-embedding-3-large), BGE-m3,
 | **NDCG@k** | 정답 문서의 순위에 로그 감쇠(log₂(rank+1))를 적용한 DCG를 이상적 순서(IDCG)로 정규화한 값. 0~1 범위, 순위 민감도가 높음 |
 | **MAP@k** | 정답 문서를 발견할 때마다 산출한 Precision의 평균(Average Precision)을 전체 Query에 대해 재평균. 순위와 다중 정답을 동시에 반영 |
 
-### 1.지표별 해석
-- Accuracy : 검색 문서 중 정답 문서가 포함되어 있는지 여부를 평가한 Metric. RAG 답변 성능에 가장 중요한 지표
-- Precision : 검색 문서 개수 중 정답 문서가 포함되어 있는지 여부를 평가한 Metric. 검색 문서 개수가 많아질 수록 분모가 커져 값이 빠르게 줄어든다.
-- Recall : 전체 정답 문서 개수 대비 검색한 문서에 포함된 정답 문서가 개수 Metric. 이 성능평가의 경우 정답 문서는 질문 당 하나이기 때문에 Accuracy 점수와 동일.
-- MRR : 처음으로 정답 문서가 등장한 순위의 역수. 0.5일 경우 정답 문서가 2번째로 나오고 0.33일 경우 3번째로 나온다는 뜻.
-
-- NDCG : 정답인 문서에 대해 log2(rank+1)합 DCG, 모든 문서가 정답일 때 log2(rank+1)합 Ideal DCG를 구해 DCG/Ideal DCG 값을 사용. 계산 방식은 다르지만 정답 문서의 위치를 고려한 Mertic이기 때문에 MRR값 변동을 따라감.
-- MAP : 1위부터 문서의 위치까지 '정답 개수/전체 문서 개수'의 평균. 정답 문서가 빠르게 나올 수록 점수가 높아짐.
-Mean Average Precision
-- 
 <br><br><br>
 
 ## 1차 성능평가
@@ -108,7 +98,6 @@ BM25의 성능이 낮다. 금융 리포트 특성상 전문 용어와 수치 데
 
 또한 k=10일 때 BGE-m3모델의 Accuracy는 0.97, OpenAI text-embedding-3-large는 0.93으로 금융 텍스트에 대한 이해도가 우수하다. 
 
-<br><br><br>
 
 ### 2.최종 결정
 
