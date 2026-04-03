@@ -1,7 +1,9 @@
 # main.py
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from langchain_openai import OpenAIEmbeddings
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
 import shutil
 import os
 import sqlite3
@@ -9,7 +11,24 @@ import sqlite3
 from dotenv import load_dotenv
 load_dotenv() # .env 파일 읽어서 환경변수로 등록
 
-app = FastAPI()
+
+
+# app.state : FastAPI 전역 상태 저장소로, 모든 요청에서 동일한 인스턴스를 사용할 수 있다.
+# 하지만 아무래도 모델 다운로드가 느리기 때문에 bge-m3는 실제 서버 가동 시 사용. 테스트 때는 빠른 OpenAI Embedding text-embedding-3-large 사용.
+# 실 서버 운영 시 파일 전처리 후 vectordb 구성도 bge-m3로 진행해주어야 함.
+#
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     # 서버 시작 시 BGE-m3 모델 로드
+#     print("BGE-m3 임베딩 모델 로딩 중...")
+#     from langchain_huggingface import HuggingFaceEmbeddings
+#     app.state.embedding = HuggingFaceEmbeddings(model_name="BAAI/bge-m3")
+#     print("BGE-m3 임베딩 모델 로딩 완료")
+#     yield
+#     # 서버 종료 시 정리 작업 (필요 시 추가)
+
+
+app = FastAPI() #lifespan=lifespan
 # 프론트엔드에서 오는 요청을 허용해주는 CORS 설정 추가
 # 테스트용이므로 모든 접근 허용
 app.add_middleware(
@@ -170,7 +189,7 @@ def list_files():
 #     if not os.path.isdir(vectordb_path):
 #         return {"error": f"VectorDB를 찾을 수 없습니다: {request.file_name}"}
 #
-#     embedding = OpenAIEmbeddings()
+#     embedding = OpenAIEmbeddings(model = 'text-embedding-3-large')
 #     vectordb = Chroma(
 #         persist_directory=vectordb_path,
 #         embedding_function=embedding,
@@ -283,7 +302,7 @@ class ChatRequest(BaseModel):
 @app.post("/chat/")
 def chat(request: ChatRequest):
     from langchain_chroma import Chroma
-    from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+    from langchain_openai import ChatOpenAI
     from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
     from langchain_classic.chains.combine_documents import create_stuff_documents_chain
     from langchain_classic.chains import create_retrieval_chain
@@ -294,13 +313,17 @@ def chat(request: ChatRequest):
     if not os.path.isdir(vectordb_path):
         return {"error": f"VectorDB를 찾을 수 없습니다: {request.file_name}"}
 
-    embedding = OpenAIEmbeddings()
+    #embedding = app.state.embedding
+    embedding = OpenAIEmbeddings(model = 'text-embedding-3-large')
     vectordb = Chroma(
         persist_directory=vectordb_path,
         embedding_function=embedding,
         collection_name="multimodal_rag",
     )
-    retriever = vectordb.as_retriever(search_kwargs={"k": 4})
+
+    #k=10 정확도 0.9310
+    #k=5 정확도 0.8560
+    retriever = vectordb.as_retriever(search_kwargs={"k": 10})
 
     template = """당신은 PDF 리포트를 상세히 설명하는 AI 어시스턴트입니다.
 

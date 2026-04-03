@@ -1,7 +1,7 @@
 # 진행
 # 1.QA_evaluation_data_creator.py -> golden_set.csv -> 2.QA_evaluation.py -> evaluation_result.csv -> 3.evaluation_grader.py
 #
-# evaluation/golden_set.csv : 정답 QA 파일
+# evaluation_data_processing_method/golden_set.csv : 정답 QA 파일
 #
 # 아래 비교군 4가지의 vectordb를 만든다.
 # 1. 그냥 pdf text 추출 -> chunking -> vectordb : 아무런 처리도 하지 않은 방식

@@ -1,26 +1,28 @@
 # 임베딩 모델에 따른 RAG 검색 성능 평가
 
-서비스의 RAG 답변 품질의 향상을 위해 VectorDB를 구성하는 다양한 임베딩 모델에 따른 RAG 성능 평가를 진행하였다. 
+### 개요
 
-비교군
-- OpenAI text-embedding-ada-002 (기본 임베딩 모델)
-- BM25 알고리즘
-- Ensemble Retriever (OpenAI text-embedding-ada-002 : BM25 = 5 : 5)
-- OpenAI text-embedding-3-large
-- BGE-m3
+RAG 시스템의 검색, 답변 품질 향상을 위해 VectorDB를 구성하는 임베딩 모델 및 검색 알고리즘에 따른 Retriever 성능을 평가했다.
+OpenAI Embedding Model (text-embedding-ada-002, text-embedding-3-large), BGE-m3, Ensemble, BM25로 총 5가지의 Retriever를 동일한 평가 데이터셋을 사용해 성능을 비교했다.
+
+### 비교 Retriever
+
+| # | Retriever | 방식     |
+|---|---|--------|
+| 1 | OpenAI text-embedding-ada-002 | Dense |
+| 2 | BM25 | Sparse|
+| 3 | Ensemble (ada-002 : BM25 = 5:5) | Hybrid|
+| 4 | OpenAI text-embedding-3-large | Dense |
+| 5 | BAAI/BGE-m3 | Dense |
 
 ### 데이터셋
 
-소스 데이터 : https://securities.miraeasset.com/bbs/download/2143555.pdf?attachmentId=2143555
+- **소스**: 미래에셋증권 기업분석 리포트 `20260402_신세계(004170_매수).pdf` <br> https://securities.miraeasset.com/bbs/download/2143555.pdf?attachmentId=2143555
+- **전처리**: LLM 기반 텍스트 정제 + QA 합성 데이터 + 이미지 설명 데이터 -> 총 94개 Corpus
+- **Query 생성**: 각 Corpus 실사용자 질문 패턴을 모사한 질문을 LLM으로 2개씩 생성 → 총 188개 Query
+- **Relevant Docs**: Query별 정답 문서 ID를 1:1 매핑하여 `relevant_docs.json`으로 관리
 
-<20260402_신세계 (004170_매수).pdf>를 전처리하여 LLM 정제 데이터 + QA 합성 데이터 + 이미지 설명 데이터로 VectorDB를 구성하였다. 
-구성된 Documents 하나마다 사용자가 AI 챗봇을 사용하며 실제 할 법한 질문을 LLM으로 2개씩 생성했다.
-
-
-각 임베딩 모델, 알고리즘 방식으로 생성된 retriever에 모든 query 질문을 하여 k개의 검색 결과를 받아온다.
-검색된 k개의 결과를 query와 연결된 정답 corpus와 비교하며 Accuracy, Precision, Recall, MRR, NDCG, MAP의 성능 Metric을 도출한다.
-
-query, corpus 예시
+데이터 예시
 
 ```
 "q_29_1": "신세계DF의 2025년과 2026년 연간 매출액 성장률을 비교해 보세요. 어떤 변화가 있었나요?",
@@ -34,14 +36,33 @@ query, corpus 예시
 ... 94개
 ```
 
-# 첫 번째 성능평가
+### 평가 방식
 
-먼저 가장 기본적인 임베딩 검색, BM25 검색, 앙상블 서치에 대한 성능평가를 진행했다.
+각 Retriever에 전체 Query를 입력하여 상위 k개 문서를 검색한 뒤, 성능 Metric을 k = 1, 3, 5, 10 구간별로 집계한다. Metric은 Accuracy, Precision, Recall, MRR, NDCG, MAP을 포함한다.
 
-<img src="./heatmaps/first_result/heatmap_k1.png">
-<img src="./heatmaps/first_result/heatmap_k3.png">
-<img src="./heatmaps/first_result/heatmap_k5.png">
-<img src="./heatmaps/first_result/heatmap_k10.png">
+| 지표 | 설명 |
+|------|------|
+| **Accuracy@k** | 상위 k개 검색 결과 중 정답 문서가 1개 이상 포함되면 1, 아니면 0. RAG 답변 생성 가능 여부를 직접적으로 반영하는 핵심 지표 |
+| **Precision@k** | 상위 k개 중 정답 문서 비율 (정답 수 / k). k가 클수록 분모가 증가해 값이 감소하는 경향 |
+| **Recall@k** | 전체 정답 문서 중 상위 k개에 포함된 비율. 본 실험은 Query당 정답 문서가 1개이므로 Accuracy@k와 동일 |
+| **MRR@k** | 첫 번째 정답 문서의 순위(rank)의 역수 평균. MRR=0.5이면 정답이 평균 2위, MRR=0.33이면 평균 3위에 위치함을 의미 |
+| **NDCG@k** | 정답 문서의 순위에 로그 감쇠(log₂(rank+1))를 적용한 DCG를 이상적 순서(IDCG)로 정규화한 값. 0~1 범위, 순위 민감도가 높음 |
+| **MAP@k** | 정답 문서를 발견할 때마다 산출한 Precision의 평균(Average Precision)을 전체 Query에 대해 재평균. 순위와 다중 정답을 동시에 반영 |
+
+# 1차 성능평가
+
+먼저 가장 기본적인 OpenAI text-embedding-ada-002 model, BM25 검색, Ensemble에 대한 성능평가를 진행했다.
+
+<table>
+  <tr>
+    <td><img src="./heatmaps/first_result/heatmap_k1.png" width="100%"></td>
+    <td><img src="./heatmaps/first_result/heatmap_k3.png" width="100%"></td>
+  </tr>
+  <tr>
+    <td><img src="./heatmaps/first_result/heatmap_k5.png" width="100%"></td>
+    <td><img src="./heatmaps/first_result/heatmap_k10.png" width="100%"></td>
+  </tr>
+</table>
 
 ### 지표별 해석
 - Accuracy : 검색 문서 중 정답 문서가 포함되어 있는지 여부를 평가한 Metric. RAG 답변 성능에 가장 중요한 지표
@@ -55,8 +76,17 @@ Mean Average Precision
 
 
 ### 결과 해석
-k=1에서 Accuracy가 평균 0.4인데 이는 첫 번째 검색 결과로 10개 중 4개만 성공한다는 뜻이다. 보통 0.6 이상은 되어야 하기 때문에 서비스에 적합하지 않다고 할 수 있다.<br>
-k=5에서 Accuracy가 0.7, MRR은 0.5이다. k값이 늘어남에 따라 검색 성능 자체는 양호하지만 정답 문서가 뒤로 밀려 있는 상태이다.<br>
+k=1에서 Accuracy의 평균이 0.4이다. 이는 첫 번쨰 검색 결과가 정답인 경우가 40%에 불과하다는 뜻이다. RAG 시스템에서 LLM에 전달되는 context의 신뢰도가 낮음을 의미하며 보통 0.6 이상은 되어야 하기 때문에 서비스에 적합하지 않다고 할 수 있다.<br>
+k=5에서 Accuracy의 평균이 0.7, MRR의 평균이 0.5이다. k값이 높아짐에 따라 정답 문서 포함률이 70%까지 상승하지만 상위권에 검색되는 비율이 낮는 의미이다.
+BM25의 성능이 낮다. 금융 리포트 특성상 전문 용어와 수치 데이터가 많아형태소 기반 매칭만으로는 의미적 유사도를 포착하기 어렵다. 이로 인해 Ensemble Retriever 역시 BM25의 노이즈로 인해 성능이 저하된다.
+
+
+### 원인 및 개선 방향
+
+- ~~Cross-Encoder(Reranker) 적용~~ — 랭킹 개선 효과는 있으나, 근본적인 임베딩 표현력 한계를 해소하지 못함
+- **고성능 임베딩 모델 교체** — 파라미터 수 및 학습 데이터 규모가 큰 모델로 교체하여 의미 표현력 자체를 향상
+
+---
 
 
 ### 해결 방법 
@@ -64,21 +94,32 @@ k=5에서 Accuracy가 0.7, MRR은 0.5이다. k값이 늘어남에 따라 검색 
 -> 큰 임베딩 모델 교체 bge-m3, OpenAI text-embedding-3-large
 
 
-# 두 번쨰 성능평가 
-BGE-m3모델과 OpenAI text-embedding-3-large 모델 사용해 성능 평가
+# 2차 성능평가
+크기, 용량이 큰 고성능 모델인 BGE-m3모델과 OpenAI text-embedding-3-large 모델 성능평가
 
-<img src="./heatmaps/second_result/heatmap_k1.png">
-<img src="./heatmaps/second_result/heatmap_k3.png">
-<img src="./heatmaps/second_result/heatmap_k5.png">
-<img src="./heatmaps/second_result/heatmap_k10.png">
+<table>
+  <tr>
+    <td><img src="./heatmaps/second_result/heatmap_k1.png" width="100%"></td>
+    <td><img src="./heatmaps/second_result/heatmap_k3.png" width="100%"></td>
+  </tr>
+  <tr>
+    <td><img src="./heatmaps/second_result/heatmap_k5.png" width="100%"></td>
+    <td><img src="./heatmaps/second_result/heatmap_k10.png" width="100%"></td>
+  </tr>
+</table>
 
 ### 결과 해석
-k=5일 때 Accuracy 점수가 BGE-m3 모델은 0.87, OpenAI text-embedding-3-large는 0.85로 준수한 성능을 보이고 있음을 알 수 있다. MRR 점수도 모든 k값 범위에서 상승한 것을 볼 수 있다. <br>
-k=10일 때 Accuracy 점수가 BGE-m3모델은 0.97, OpenAI text-embedding-3-large는 0.93으로 꽤 높은 것을 볼 수 있다. 
+1차 평가 대비 전 구간에서 뚜렷한 성능 향상이 확인된다. k=5 Accuracy가 약 +17~19%p, k=10 Accuracy가 약 +15~27%p 개선되었으며, MRR 역시 전반적으로 상승하여 정답 문서의 순위 노출 품질도 함께 개선되었다.<br>
 
-### 결정
-k값을 5로 하면 검색의 신뢰도는 0.9수준으로 유지한 채 토큰 소모는 줄일 수 있다.
+또한 k=10일 때 BGE-m3모델의 Accuracy는 0.97, OpenAI text-embedding-3-large는 0.93으로 금융 텍스트에 대한 이해도가 우수하다. 
 
-k값을 10으로 하면 검색의 신뢰도가 상승하지만 그만큼 토큰 소모가 세다.
 
-Accyracy 점수가 높은 BGE-m3모델을 사용. 토큰 소모량이 많아도 주식, 경제 관련 도메인은 정확도가 중요하므로 k=10 적용.
+## 최종 결정
+
+**선택 모델: BAAI/BGE-m3 / k = 10**
+
+| 항목 | 내용 |
+|---------|------|
+| 모델 선택 근거 | 동일 조건 대비 Accuracy 우위, 금융·경제 도메인 텍스트에서의 표현력 우수 |
+| k = 10 선택 | 주식·경제 도메인 특성상 정확도가 서비스 품질에 직결되며, Accuracy@10 = 0.97로 충분한 신뢰도 확보. 토큰 소모 증가는 감수 |
+| k = 5 미선택 | Accuracy@5 = 0.87로 약 13%의 쿼리에서 정답 문서가 누락될 위험이 존재 |

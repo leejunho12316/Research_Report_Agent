@@ -513,7 +513,7 @@ def process_pdf_to_vectordb(file_path: str, task_id=None) -> str:
 
     vectordb = Chroma.from_documents(
         documents=langchain_docs,
-        embedding=OpenAIEmbeddings(),
+        embedding=OpenAIEmbeddings(model = 'text-embedding-3-large'),
         collection_name="multimodal_rag",
         persist_directory=vectordb_dir,
     )
