@@ -10,7 +10,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_community.retrievers import BM25Retriever
-# from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 load_dotenv()
 
@@ -67,19 +67,26 @@ def get_doc_id_by_content(content: str) -> Optional[str]:
 
 
 # # ── 3. 리트리버 생성 ──────────────────────────────────────────────────────────
-# print("bge-m3 임베딩 리트리버 생성 중...") (너무오래걸림)
-# embeddings = HuggingFaceEmbeddings(model_name='BAAI/bge-m3')
-# vectorstore = Chroma.from_documents(documents, embeddings)
+# print('OpenAI 임베딩 리트리버 생성 중...')
+# embeddings = OpenAIEmbeddings()
+# vectorstore = Chroma.from_documents(documents, embeddings, collection_name="openai")
 # embedding_retriever = vectorstore.as_retriever(search_kwargs={'k': 10})
 
-print('OpenAI 임베딩 리트리버 생성 중...')
-embeddings = OpenAIEmbeddings()
-vectorstore = Chroma.from_documents(documents, embeddings)
-embedding_retriever = vectorstore.as_retriever(search_kwargs={'k': 10})
+# print("BM25 리트리버 생성 중...")
+# bm25_retriever = BM25Retriever.from_documents(documents)
+# bm25_retriever.k = 10
 
-print("BM25 리트리버 생성 중...")
-bm25_retriever = BM25Retriever.from_documents(documents)
-bm25_retriever.k = 10
+print('OpenAI Large 임베딩 리트리버 생성 중...')
+embeddings = OpenAIEmbeddings(model='text-embedding-3-large')
+vectorstore = Chroma.from_documents(documents, embeddings, collection_name="openai_large")
+openai_large_embedding_retriever = vectorstore.as_retriever(search_kwargs={'k': 10})
+
+print("bge-m3 임베딩 리트리버 생성 중...")
+embeddings = HuggingFaceEmbeddings(model_name='BAAI/bge-m3')
+vectorstore = Chroma.from_documents(documents, embeddings, collection_name="bge-m3")
+bgem3_embedding_retriever = vectorstore.as_retriever(search_kwargs={'k': 10})
+
+
 
 
 #LangChain 0.9.X 버전 EnsembleRetriever 예토전생 class
@@ -124,15 +131,15 @@ class EnsembleRetriever:
         return self._fuse_results(all_results)[:k]
 
 
-print("앙상블 리트리버 생성 중...")
-ensemble_retriever = EnsembleRetriever(
-    retrievers=[bm25_retriever, embedding_retriever],
-    weights=[0.5, 0.5],
-)
+# print("앙상블 리트리버 생성 중...")
+# ensemble_retriever = EnsembleRetriever(
+#     retrievers=[bm25_retriever, embedding_retriever],
+#     weights=[0.5, 0.5],
+# )
 
 # #########Ensemble Retriever도 5개만 invoke 한다음 k=10일떄 구하는거 아님? Retriever로 10개 가져오도록 해야하는거 아님?
-#
-#
+
+
 # # ── 4. 평가 메트릭 함수 ───────────────────────────────────────────────────────
 #accuracy : 검색한 것들 중 맞은 것이 있는지 1 or 0
 def calculate_accuracy_at_k(retrieved_docs: List[Document], answer_ids: Set[str], k: int) -> float:
@@ -214,9 +221,9 @@ def evaluate_retriever(retriever, queries: Dict[str, str], relevant_pairs: Dict[
     print(f"\n{name} 리트리버 평가 중...")
     results = []
 
-    sample_queries = dict(list(queries.items())[:20])
+    # sample_queries = dict(list(queries.items())[:20])
 
-    for query_id, query_text in tqdm(sample_queries.items(), desc=name):
+    for query_id, query_text in tqdm(queries.items(), desc=name):
 
         retrieved_docs = retriever.invoke(query_text) #[Document, Document ,,, Document]
         answer_ids = relevant_pairs.get(query_id, set()) #정답 doc id
@@ -233,93 +240,84 @@ def evaluate_retriever(retriever, queries: Dict[str, str], relevant_pairs: Dict[
         results.append({"query_id": query_id, "query": query_text, **metrics})
 
     #전체 질문에 대한 metric 평균 계산
+    #query_id, query, Accuracy, Precision,,, 중 Metric 관련 칼럼만 선택
     df_results = pd.DataFrame(results)
-    #칼럼 무조건 저거 확인해야하는지 ? : c.startswith() 같은거.
     metric_cols = [c for c in df_results.columns if any(c.startswith(p) for p in ["Accuracy", "Precision", "Recall", "MRR", "NDCG", "MAP"])]
     avg_metrics = df_results[metric_cols].mean().to_dict()
-    #
-    # print(f"\n{name} 리트리버 평가 결과 (평균):")
-    # for k in sorted(k_values):
-    #     print(f"  k={k}:")
-    #     for prefix in ["Accuracy", "Precision", "Recall", "MRR", "NDCG", "MAP"]:
-    #         key = f"{prefix}@{k}"
-    #         if key in avg_metrics:
-    #             print(f"    {key}: {avg_metrics[key]:.4f}")
-    #
-    # return avg_metrics
+
+    return avg_metrics
 
 
 
-#
-# # ── 6. 검색 결과 비교 분석 ────────────────────────────────────────────────────
-# def analyze_all_retrievers(queries: Dict[str, str], corpus: Dict[str, str], relevant_docs: Dict[str, Set[str]], num_samples: int = 5, top_k: int = 3):
-#     print(f"\n===== 리트리버 검색 결과 비교 분석 (샘플 {num_samples}개) =====\n")
-#
-#     def find_doc_id(content: str) -> Optional[str]:
-#         for doc_id, doc_content in corpus.items():
-#             if content == doc_content or content in doc_content or doc_content in content:
-#                 return doc_id
-#         return None
-#
-#     retrievers = {"BM25": bm25_retriever, "임베딩": embedding_retriever, "앙상블": ensemble_retriever}
-#
-#     for idx, query_id in enumerate(list(queries.keys())[:num_samples]):
-#         query_text = queries[query_id]
-#         expected_doc_ids = relevant_docs.get(query_id, set())
-#
-#         print(f"\n{'='*80}")
-#         print(f"\n[질문 {idx+1}] {query_text}")
-#         print("--" * 20)
-#
-#         print("\n정답 문서:")
-#         for doc_id in expected_doc_ids:
-#             doc_text = corpus.get(doc_id, "문서를 찾을 수 없음")
-#             print(f"  문서 ID: {doc_id}")
-#             print(f"  내용: {doc_text[:150]}..." if len(doc_text) > 150 else f"  내용: {doc_text}")
-#
-#         print("==" * 50)
-#         for name, retriever in retrievers.items():
-#             retrieved = retriever.invoke(query_text)
-#             print(f"\n{name} 리트리버 검색 결과 (상위 {top_k}개):")
-#             for i, doc in enumerate(retrieved[:top_k]):
-#                 doc_id = doc.metadata.get("id") or find_doc_id(doc.page_content) or f"unknown_{i}"
-#                 mark = "O" if doc_id in expected_doc_ids else "X"
-#                 print(f"  [{i+1}] {mark} 문서 ID: {doc_id}")
-#                 print(f"      내용: {doc.page_content[:150]}..." if len(doc.page_content) > 150 else f"      내용: {doc.page_content}")
-#                 print("--" * 20)
-#
-#             correct = sum(
-#                 1 for doc in retrieved[:top_k]
-#                 if (doc.metadata.get("id") or find_doc_id(doc.page_content)) in expected_doc_ids
-#             )
-#             denom = min(top_k, len(retrieved))
-#             print(f"  정확도: {correct}/{denom} ({correct/denom:.2f})" if denom else "  정확도: N/A")
-#
-#         print(f"\n{'='*80}")
+
+# ── 6. 검색 결과 비교 분석 ────────────────────────────────────────────────────
+def analyze_all_retrievers(queries: Dict[str, str], corpus: Dict[str, str], relevant_pairs: Dict[str, Set[str]], num_samples: int = 5, top_k: int = 3):
+    print(f"\n===== 리트리버 검색 결과 비교 분석 (샘플 {num_samples}개) =====\n")
+
+    def find_doc_id(content: str) -> Optional[str]:
+        for doc_id, doc_content in corpus.items():
+            if content == doc_content or content in doc_content or doc_content in content:
+                return doc_id
+        return None
+
+    retrievers = {"BM25": bm25_retriever, "임베딩": embedding_retriever, "앙상블": ensemble_retriever}
+
+    for idx, query_id in enumerate(list(queries.keys())[:num_samples]):
+        query_text = queries[query_id]
+        answer_ids = relevant_pairs.get(query_id, set())
+
+        print(f"\n{'='*80}")
+        print(f"\n[질문 {idx+1}] {query_text}")
+        print("--" * 20)
+
+        print("\n정답 문서:")
+        for doc_id in answer_ids:
+            doc_text = corpus.get(doc_id, "문서를 찾을 수 없음")
+            print(f"  문서 ID: {doc_id}")
+            print(f"  내용: {doc_text[:150]}..." if len(doc_text) > 150 else f"  내용: {doc_text}")
+
+        print("==" * 50)
+        for name, retriever in retrievers.items():
+            retrieved = retriever.invoke(query_text)
+            print(f"\n{name} 리트리버 검색 결과 (상위 {top_k}개):")
+            for i, doc in enumerate(retrieved[:top_k]):
+                doc_id = doc.metadata.get("id") or find_doc_id(doc.page_content) or f"unknown_{i}"
+                mark = "O" if doc_id in answer_ids else "X"
+                print(f"  [{i+1}] {mark} 문서 ID: {doc_id}")
+                print(f"      내용: {doc.page_content[:150]}..." if len(doc.page_content) > 150 else f"      내용: {doc.page_content}")
+                print("--" * 20)
+
+            correct = sum(
+                1 for doc in retrieved[:top_k]
+                if (doc.metadata.get("id") or find_doc_id(doc.page_content)) in answer_ids
+            )
+            denom = min(top_k, len(retrieved))
+            print(f"  정확도: {correct}/{denom} ({correct/denom:.2f})" if denom else "  정확도: N/A")
+
+        print(f"\n{'='*80}")
 
 
 # ── 7. 메인 실행 ──────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     queries, corpus, relevant_pairs = load_query_doc_pairs()
 
-    print(relevant_pairs)
-
-    # # 리트리버 평가
+    # 리트리버 평가 - retriever 객체 / 질문 dict ('q_0_0' : '질문') / 질문 : 문서 dict ('id' : 'id') / print에 쓰이는 이름
     print("\n리트리버 평가 시작...")
+    # embedding_metrics = evaluate_retriever(embedding_retriever, queries, relevant_pairs, "임베딩")
+    # bm25_metrics = evaluate_retriever(bm25_retriever, queries, relevant_pairs, "BM25")
+    # ensemble_metrics = evaluate_retriever(ensemble_retriever, queries, relevant_pairs, "앙상블")
 
-    # retriever 객체 / 질문 dict ('q_0_0' : '질문') / 질문 : 문서 dict ('id' : 'id') / print에 쓰이는 이름
-    embedding_metrics = evaluate_retriever(embedding_retriever, queries, relevant_pairs, "임베딩")
-    # bm25_metrics = evaluate_retriever(bm25_retriever, queries, relevant_docs, "BM25")
-    # ensemble_metrics = evaluate_retriever(ensemble_retriever, queries, relevant_docs, "앙상블")
-    #
-    # # 결과 비교 및 저장
+    bgem3_metrics = evaluate_retriever(bgem3_embedding_retriever, queries, relevant_pairs, "BGE-M3")
+    openai_metrics = evaluate_retriever(openai_large_embedding_retriever, queries, relevant_pairs, "임베딩 OpenAI Large")
+
+    # 결과 비교 및 저장
     # results_df = pd.DataFrame({"임베딩": embedding_metrics, "BM25": bm25_metrics, "앙상블": ensemble_metrics})
-    # print("\n리트리버 성능 비교:")
-    # print(results_df)
-    #
-    # output_path = os.path.join(os.path.dirname(__file__), "retriever_comparison_results.csv")
-    # results_df.to_csv(output_path)
-    # print(f"\n평가 결과를 '{output_path}'에 저장했습니다.")
-    #
-    # # 실제 검색 결과 비교
-    # analyze_all_retrievers(queries, corpus, relevant_docs)
+    results_df = pd.DataFrame({"BGE-m3": bgem3_metrics, "OpenAI (large)": openai_metrics})
+    results_df = results_df.round(3)
+
+    output_path = os.path.join(os.path.dirname(__file__), "heatmaps/second_result/retriever_comparison_results.csv")
+    results_df.to_csv(output_path)
+    print(f"\n평가 결과를 '{output_path}'에 저장했습니다.")
+
+    # 실제 검색 결과 비교
+    # analyze_all_retrievers(queries, corpus, relevant_pairs)
