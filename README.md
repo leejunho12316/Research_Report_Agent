@@ -73,7 +73,9 @@ Library/bin/ 폴더 PATH에 추가
 <br><br><br>
 
 # Implementation Details
-## 데이터 처리 파이프라인
+
+<details>
+<summary> 데이터 처리 파이프라인 </summary>
 
 
 **1. 이미지 추출**
@@ -294,7 +296,7 @@ LLM에게 전체 pdf 페이지 이미지를 참고해 맥락을 파악하며 추
 → QA 합성 데이터와 이미지 설명 데이터를 합쳐 **Chroma VectorDB**에 임베딩 저장.
 
 → **SQLite**에 pdf 파일 별 전처리 현황 업데이트로 사용자 UI에 진행 과정 알림.
-
+</details>
 
 <br><br><br>
 
