@@ -70,22 +70,31 @@ Library/bin/ 폴더 PATH에 추가
 
 ## Data Processing Pipeline
 
+<img src="readme_images/figure-7-10.jpg" width="200">
+
 ### - [데이터 처리 파이프라인](./README_data_pipeline.md)
 
 <br>
 
 ## Evaluation
 
+<img src="evaluation_data_processing_method/evaluation_visualization.png" width="200">
+
 ### - [데이터 전처리 방식에 따른 RAG 검색 성능평가](./evaluation_data_processing_method/README.md)
+
+<img src="evaluation_embedding_model/heatmaps/first_result/heatmap_k10.png" width = '200'>
+
 ### - [임베딩 모델에 따른 RAG 검색 성능평가](./evaluation_embedding_model/README.md)
 
 <br>
 
 ## Multimodal&Multiturn
 
+<img src="readme_images/멀티모달 예시 2.png" width = '200'>
+
 ### - [MultiModal & Multiturn](./README_multi.md)
 
-<br><br><br>
+<br><br><br><br><br><br>
 
 ---
 
